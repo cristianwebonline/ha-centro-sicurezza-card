@@ -4,7 +4,7 @@
  *  ultime attività dal logbook. Pensata per sostituire una vista fatta di
  *  tante mushroom-template-card ripetute, ognuna con il suo CSS a mano.
  */
-const CSC_VERSION = "1.0.0";
+const CSC_VERSION = "1.0.1";
 console.info(`%c CENTRO-SICUREZZA-CARD %c v${CSC_VERSION} `,
   "color:#2b0a0a;background:#ff5442;font-weight:700;border-radius:4px 0 0 4px",
   "color:#ffe0da;background:#1a1b21;border-radius:0 4px 4px 0");
@@ -65,7 +65,7 @@ class CentroSicurezzaCard extends HTMLElement {
   }
   getCardSize() { return 5; }
   getLayoutOptions() {
-    return { grid_rows: 6, grid_columns: 3, grid_min_rows: 4, grid_max_rows: 10, grid_min_columns: 2, grid_max_columns: 5 };
+    return { grid_rows: 8, grid_columns: 4, grid_min_rows: 4, grid_max_rows: 12, grid_min_columns: 2, grid_max_columns: 6 };
   }
   static getConfigElement() { return document.createElement("centro-sicurezza-card-editor"); }
   static getStubConfig() { return JSON.parse(JSON.stringify(CSC_DEFAULTS)); }
@@ -194,16 +194,23 @@ class CentroSicurezzaCard extends HTMLElement {
   _openSensors() {
     let ov = this.querySelector(".csc-scrim.sensors");
     if (!ov) { ov = document.createElement("div"); ov.className = "csc-scrim sensors"; this.querySelector(".csc").appendChild(ov); }
-    const list = this._sensorList();
-    const rows = list.map(s => {
+    const list = this._sensorList().map(s => {
       const st = this._hass.states[s.id];
-      const on = st && st.state === "on";
+      return { ...s, on: !!(st && st.state === "on") };
+    });
+    // I sensori aperti/attivi vanno in cima, ben visibili — non deve servire
+    // scorrere l'elenco per capire quale sia scattato.
+    list.sort((a, b) => (b.on ? 1 : 0) - (a.on ? 1 : 0));
+    const openCount = list.filter(s => s.on).length;
+    const rows = list.map(s => {
       const label = s.label || this._name(s.id);
-      return `<div class="csc-srow" data-on="${on ? 1 : 0}"><span class="csc-sdot"></span><span style="flex:1">${this._esc(label)}</span>
-        <span>${on ? "Aperto/attivo" : "OK"}</span></div>`;
+      return `<div class="csc-srow" data-on="${s.on ? 1 : 0}"><span class="csc-sdot"></span><span style="flex:1">${this._esc(label)}</span>
+        <span>${s.on ? "⚠️ Aperto/attivo" : "OK"}</span></div>`;
     }).join("");
     ov.innerHTML = `<div class="csc-modal">
-      <div class="csc-mh"><div class="csc-mt">Sensori</div><button class="csc-x">✕</button></div>
+      <div class="csc-mh"><div><div class="csc-mt">Sensori</div>
+        ${list.length ? `<div style="font-size:11.5px;color:var(--csc-muted);margin-top:2px">${openCount ? `${openCount} di ${list.length} aperti/attivi` : `tutti e ${list.length} a posto`}</div>` : ""}
+      </div><button class="csc-x">✕</button></div>
       ${rows || '<div class="csc-empty">Nessun sensore configurato.</div>'}
     </div>`;
     requestAnimationFrame(() => ov.classList.add("on"));
@@ -267,7 +274,10 @@ class CentroSicurezzaCard extends HTMLElement {
     this._el.querySelector('[data-role="state"]').textContent = stateLabel;
 
     const sub = [];
-    if (cfg.door_sensor) sub.push(doorOpen ? "🚪 Aperta" : "🚪 Chiusa");
+    // Quando l'anta è aperta lo dice già lo stato grande sopra ("🚪 Anta
+    // aperta") — ripeterlo qui sotto è ridondante. Quando è chiusa invece è
+    // un'informazione in più (utile insieme allo stato serratura), la teniamo.
+    if (cfg.door_sensor && !doorOpen) sub.push("🚪 Chiusa");
     if (cfg.battery) { const b = this._num(cfg.battery); if (b != null) sub.push(`🔋 ${Math.round(b)}%`); }
     this._el.querySelector('[data-role="sub"]').innerHTML = sub.map(s => `<span>${s}</span>`).join("");
 
@@ -275,7 +285,14 @@ class CentroSicurezzaCard extends HTMLElement {
     if (sensors.length) {
       badge.hidden = false;
       badge.dataset.alert = openSensors.length ? "1" : "0";
-      badge.textContent = openSensors.length ? `🚨 ${openSensors.length} sensori aperti/attivi` : "✅ Tutto chiuso";
+      // Con 1-2 sensori aperti mostra subito i nomi (non serve aprire
+      // l'elenco per saperlo); con di più, solo il numero — altrimenti il
+      // badge diventa illeggibile.
+      if (openSensors.length === 0) badge.textContent = "✅ Tutto chiuso";
+      else if (openSensors.length <= 2) {
+        const names = openSensors.map(s => s.label || this._name(s.id)).join(", ");
+        badge.textContent = `🚨 ${names}`;
+      } else badge.textContent = `🚨 ${openSensors.length} sensori aperti/attivi — tocca per vedere quali`;
     } else badge.hidden = true;
 
     const actions = this._el.querySelector('[data-role="actions"]');
