@@ -4,7 +4,7 @@
  *  ultime attività dal logbook. Pensata per sostituire una vista fatta di
  *  tante mushroom-template-card ripetute, ognuna con il suo CSS a mano.
  */
-const CSC_VERSION = "2.0.1";
+const CSC_VERSION = "2.1.0";
 console.info(`%c CENTRO-SICUREZZA-CARD %c v${CSC_VERSION} `,
   "color:#2b0a0a;background:#ff5442;font-weight:700;border-radius:4px 0 0 4px",
   "color:#ffe0da;background:#1a1b21;border-radius:0 4px 4px 0");
@@ -49,14 +49,28 @@ function cscIconDoor() {
       </linearGradient>
       <radialGradient id="cscAmbGlow" cx="50%" cy="45%" r="60%"><stop offset="0" stop-color="#8a94a1" stop-opacity=".28"/><stop offset="1" stop-color="#8a94a1" stop-opacity="0"/></radialGradient>
       <radialGradient id="cscShadowDoor" cx="50%" cy="50%" r="50%"><stop offset="0" stop-color="#000" stop-opacity=".4"/><stop offset="1" stop-color="#000" stop-opacity="0"/></radialGradient>
+      <linearGradient id="cscSky" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#6fb8e8"/><stop offset="1" stop-color="#cdeeff"/></linearGradient>
+      <linearGradient id="cscGrass" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#6fc47f"/><stop offset="1" stop-color="#2d6b3a"/></linearGradient>
+      <radialGradient id="cscSun" cx="50%" cy="50%" r="50%"><stop offset="0" stop-color="#fff6d8"/><stop offset="1" stop-color="#ffd166"/></radialGradient>
+      <clipPath id="cscGardenClip"><rect x="70" y="50" width="260" height="380"/></clipPath>
     </defs>
 
     <ellipse class="csc-glow" cx="200" cy="230" rx="150" ry="190" fill="url(#cscAmbGlow)"/>
     <ellipse cx="200" cy="478" rx="140" ry="14" fill="url(#cscShadowDoor)"/>
 
-    <!-- vano/sfondo dietro l'anta, visibile quando ruota aperta -->
-    <rect x="70" y="50" width="260" height="380" fill="#020617"/>
-    <path d="M 70 50 L 330 50 L 330 430 L 70 430 Z" fill="#38bdf8" opacity="0.08"/>
+    <!-- vano/sfondo dietro l'anta: un piccolo giardino, visibile quando ruota
+         aperta — un buco nero non si capiva, così si vede subito "oltre la porta" -->
+    <g clip-path="url(#cscGardenClip)">
+      <rect x="70" y="50" width="260" height="380" fill="url(#cscSky)"/>
+      <circle cx="288" cy="98" r="26" fill="url(#cscSun)"/>
+      <rect x="70" y="330" width="260" height="100" fill="url(#cscGrass)"/>
+      <rect x="118" y="272" width="10" height="58" fill="#5b4632"/>
+      <circle cx="100" cy="278" r="22" fill="#3f8850"/>
+      <circle cx="150" cy="278" r="22" fill="#3f8850"/>
+      <circle cx="123" cy="255" r="30" fill="#4a9a5a"/>
+      <circle cx="255" cy="342" r="18" fill="#4a9a5a"/>
+      <circle cx="285" cy="348" r="14" fill="#3f8850"/>
+    </g>
 
     <!-- telaio blindato -->
     <rect x="50" y="30" width="300" height="410" rx="6" fill="url(#cscDoorFrameGrad)" stroke="#1e293b" stroke-width="4"/>
