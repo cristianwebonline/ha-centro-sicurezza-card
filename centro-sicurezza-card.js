@@ -4,7 +4,7 @@
  *  ultime attività dal logbook. Pensata per sostituire una vista fatta di
  *  tante mushroom-template-card ripetute, ognuna con il suo CSS a mano.
  */
-const CSC_VERSION = "1.1.1";
+const CSC_VERSION = "2.0.0";
 console.info(`%c CENTRO-SICUREZZA-CARD %c v${CSC_VERSION} `,
   "color:#2b0a0a;background:#ff5442;font-weight:700;border-radius:4px 0 0 4px",
   "color:#ffe0da;background:#1a1b21;border-radius:0 4px 4px 0");
@@ -26,29 +26,69 @@ function stopSwipeNavHijack(el) {
     el.addEventListener(evt, e => { if (!cscInEditMode(e)) e.stopPropagation(); }, { passive: true }));
 }
 
-// Icona porta vista di FRONTE (come le altre icone del pacchetto). Per far
-// capire aperta/chiusa senza una vera prospettiva 3D: l'anta si restringe a
-// una fessura sottile (ancorata al cardine sinistro) lasciando intravedere
-// il vano scuro dietro — lo stesso trucco delle icone "porta aperta" più
-// comuni. Transizione fluida, non uno scatto. Il colore segue lo stato
-// (safe/warn/danger/busy) via classi CSS su .csc-card[data-status];
-// l'icona è costruita una volta sola in _build(), sono le classi CSS ad
-// animarla (vedi .csc-leafgroup / .csc-leafrect nello style).
+// Disegno fornito da Cristian: porta blindata realistica in 3D (rotazione su
+// cerniera + pistoni che rientrano + sensore magnetico), adattato tecnicamente:
+// id/classi dei gradienti resi univoci con prefisso "csc" (altrimenti due
+// card sulla stessa pagina si "rubano" a vicenda i gradienti, essendo id
+// validi una sola volta per pagina), animazione guidata dall'attributo
+// data-dooropen già presente su .csc-card (non serve una classe a parte sul
+// gruppo), e tolto il testo di stato disegnato dentro l'SVG — lo mostra già
+// .csc-state sotto l'icona, ripeterlo lì dentro era ridondante.
 function cscIconDoor() {
   return `
-  <svg viewBox="0 0 100 100" class="csc-svg" xmlns="http://www.w3.org/2000/svg">
+  <svg viewBox="0 0 400 500" class="csc-svg" xmlns="http://www.w3.org/2000/svg">
     <defs>
-      <linearGradient id="cscFrame" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#6b7482"/><stop offset="1" stop-color="#3a4150"/></linearGradient>
-      <radialGradient id="cscAmbGlow" cx="50%" cy="45%" r="65%"><stop offset="0" stop-color="#8a94a1" stop-opacity=".3"/><stop offset="1" stop-color="#8a94a1" stop-opacity="0"/></radialGradient>
+      <linearGradient id="cscDoorFrameGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+        <stop offset="0%" stop-color="#0f172a"/><stop offset="50%" stop-color="#334155"/><stop offset="100%" stop-color="#0f172a"/>
+      </linearGradient>
+      <linearGradient id="cscWoodPanel" x1="0%" y1="0%" x2="100%" y2="100%">
+        <stop offset="0%" stop-color="#1e293b"/><stop offset="50%" stop-color="#334155"/><stop offset="100%" stop-color="#0f172a"/>
+      </linearGradient>
+      <linearGradient id="cscMetalHandle" x1="0%" y1="0%" x2="0%" y2="100%">
+        <stop offset="0%" stop-color="#f8fafc"/><stop offset="50%" stop-color="#94a3b8"/><stop offset="100%" stop-color="#475569"/>
+      </linearGradient>
+      <radialGradient id="cscAmbGlow" cx="50%" cy="45%" r="60%"><stop offset="0" stop-color="#8a94a1" stop-opacity=".28"/><stop offset="1" stop-color="#8a94a1" stop-opacity="0"/></radialGradient>
       <radialGradient id="cscShadowDoor" cx="50%" cy="50%" r="50%"><stop offset="0" stop-color="#000" stop-opacity=".4"/><stop offset="1" stop-color="#000" stop-opacity="0"/></radialGradient>
     </defs>
-    <ellipse class="csc-glow" cx="50" cy="46" rx="34" ry="30" fill="url(#cscAmbGlow)"/>
-    <ellipse cx="50" cy="92" rx="28" ry="4.5" fill="url(#cscShadowDoor)"/>
-    <rect x="18" y="8" width="64" height="82" rx="5" fill="url(#cscFrame)" stroke="#12141a" stroke-width="1.6"/>
-    <rect x="24" y="13" width="52" height="72" rx="2" fill="#050608"/>
-    <g class="csc-leafgroup">
-      <rect class="csc-leafrect" x="24" y="13" width="52" height="72" rx="2" fill="#8a94a1" stroke="#12141a" stroke-width="1"/>
-      <circle cx="70" cy="49" r="2.6" fill="#12141a" opacity=".6"/>
+
+    <ellipse class="csc-glow" cx="200" cy="230" rx="150" ry="190" fill="url(#cscAmbGlow)"/>
+    <ellipse cx="200" cy="478" rx="140" ry="14" fill="url(#cscShadowDoor)"/>
+
+    <!-- vano/sfondo dietro l'anta, visibile quando ruota aperta -->
+    <rect x="70" y="50" width="260" height="380" fill="#020617"/>
+    <path d="M 70 50 L 330 50 L 330 430 L 70 430 Z" fill="#38bdf8" opacity="0.08"/>
+
+    <!-- telaio blindato -->
+    <rect x="50" y="30" width="300" height="410" rx="6" fill="url(#cscDoorFrameGrad)" stroke="#1e293b" stroke-width="4"/>
+    <rect x="65" y="45" width="270" height="390" fill="none" stroke="#0f172a" stroke-width="3"/>
+
+    <!-- cerniere rinforzate -->
+    <rect x="52" y="90" width="12" height="35" rx="2" fill="url(#cscMetalHandle)"/>
+    <rect x="52" y="220" width="12" height="35" rx="2" fill="url(#cscMetalHandle)"/>
+    <rect x="52" y="350" width="12" height="35" rx="2" fill="url(#cscMetalHandle)"/>
+
+    <!-- pistoni di sicurezza: rientrano quando la porta è aperta -->
+    <g class="csc-deadbolt">
+      <rect x="330" y="180" width="18" height="10" rx="3" fill="#e2e8f0"/>
+      <rect x="330" y="200" width="18" height="10" rx="3" fill="#e2e8f0"/>
+      <rect x="330" y="220" width="18" height="10" rx="3" fill="#e2e8f0"/>
+    </g>
+
+    <!-- sensore magnetico: parte fissa sul telaio + LED che segue lo stato -->
+    <rect x="315" y="35" width="12" height="24" rx="2" fill="#e2e8f0" stroke="#475569" stroke-width="1"/>
+    <circle cx="321" cy="47" r="3" class="csc-sensorled"/>
+
+    <!-- anta mobile: ruota in 3D sul cardine sinistro quando è aperta -->
+    <g class="csc-doorpanel">
+      <rect x="70" y="50" width="260" height="380" rx="4" fill="url(#cscWoodPanel)" stroke="#475569" stroke-width="2"/>
+      <rect x="90" y="70" width="220" height="340" fill="none" stroke="#1e293b" stroke-width="2"/>
+      <line x1="90" y1="150" x2="310" y2="150" stroke="#1e293b" stroke-width="2"/>
+      <line x1="90" y1="330" x2="310" y2="330" stroke="#1e293b" stroke-width="2"/>
+      <rect x="301" y="35" width="12" height="24" rx="2" fill="#e2e8f0" stroke="#475569" stroke-width="1"/>
+      <rect x="285" y="200" width="22" height="80" rx="4" fill="#0f172a" stroke="#334155" stroke-width="1.5"/>
+      <circle cx="296" cy="225" r="8" fill="url(#cscMetalHandle)"/>
+      <rect x="295" y="221" width="2" height="8" fill="#0f172a"/>
+      <rect x="292" y="245" width="8" height="28" rx="2" fill="url(#cscMetalHandle)"/>
     </g>
   </svg>`;
 }
@@ -97,20 +137,19 @@ class CentroSicurezzaCard extends HTMLElement {
       .csc-card[data-status="danger"]{background-color:rgba(255,84,66,.1);border-color:rgba(255,84,66,.32)}
       .csc-card[data-status="warn"]{background-color:rgba(255,176,32,.08);border-color:rgba(255,176,32,.28)}
       .csc-card[data-status="safe"]{background-color:rgba(56,224,138,.07);border-color:rgba(56,224,138,.24)}
-      .csc-iconwrap{width:68px;height:68px}
+      .csc-iconwrap{width:150px;height:187px}
       .csc-svg{width:100%;height:100%;display:block;filter:drop-shadow(0 6px 10px rgba(0,0,0,.35))}
       .csc-glow{opacity:.2;transition:opacity .5s}
       .csc-card[data-status="danger"] .csc-glow{opacity:1;animation:csc-pulse 1.4s ease-in-out infinite}
       .csc-card[data-status="warn"] .csc-glow{opacity:.85;animation:csc-pulse 2.2s ease-in-out infinite}
       .csc-card[data-status="busy"] .csc-glow{opacity:.85;animation:csc-pulse .8s ease-in-out infinite}
       @keyframes csc-pulse{0%,100%{opacity:.4}50%{opacity:1}}
-      .csc-leafgroup{transform-box:fill-box;transform-origin:left center;transition:transform .7s cubic-bezier(.4,0,.2,1)}
-      .csc-card[data-dooropen="1"] .csc-leafgroup{transform:scaleX(.12)}
-      .csc-leafrect{transition:fill .4s}
-      .csc-card[data-status="safe"] .csc-leafrect{fill:#38e08a}
-      .csc-card[data-status="warn"] .csc-leafrect{fill:#ffb020}
-      .csc-card[data-status="danger"] .csc-leafrect{fill:#ff5442}
-      .csc-card[data-status="busy"] .csc-leafrect{fill:#ffd166;animation:csc-blink .6s ease-in-out infinite}
+      .csc-doorpanel{transform-origin:70px 240px;transition:transform .8s cubic-bezier(.4,0,.2,1)}
+      .csc-card[data-dooropen="1"] .csc-doorpanel{transform:perspective(600px) rotateY(-65deg) skewY(2deg)}
+      .csc-deadbolt{transition:transform .5s ease-in-out}
+      .csc-card[data-dooropen="1"] .csc-deadbolt{transform:translateX(-15px)}
+      .csc-sensorled{fill:#38e08a;filter:drop-shadow(0 0 4px #38e08a);transition:fill .4s ease,filter .4s ease}
+      .csc-card[data-dooropen="1"] .csc-sensorled{fill:#ff5442;filter:drop-shadow(0 0 6px #ff5442)}
       .csc-name{font-size:16px;font-weight:800;margin-top:2px}
       .csc-state{font-size:13.5px;font-weight:800;color:var(--csc-muted);text-align:center}
       .csc-card[data-status="safe"] .csc-state{color:#8ff0b4}
