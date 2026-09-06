@@ -4,7 +4,7 @@
  *  ultime attività dal logbook. Pensata per sostituire una vista fatta di
  *  tante mushroom-template-card ripetute, ognuna con il suo CSS a mano.
  */
-const CSC_VERSION = "1.0.1";
+const CSC_VERSION = "1.1.0";
 console.info(`%c CENTRO-SICUREZZA-CARD %c v${CSC_VERSION} `,
   "color:#2b0a0a;background:#ff5442;font-weight:700;border-radius:4px 0 0 4px",
   "color:#ffe0da;background:#1a1b21;border-radius:0 4px 4px 0");
@@ -26,30 +26,31 @@ function stopSwipeNavHijack(el) {
     el.addEventListener(evt, e => { if (!cscInEditMode(e)) e.stopPropagation(); }, { passive: true }));
 }
 
-// Icona porta+lucchetto: colore e animazione seguono lo stato complessivo
-// (safe = tutto ok, warn = sbloccata, danger = anta aperta o sensore
-// scattato, busy = bloccaggio/sbloccaggio in corso).
-function cscIconDoor(status) {
-  const palette = {
-    safe: { a: "#38e08a", b: "#1f9c5c" },
-    warn: { a: "#ffb020", b: "#c47a00" },
-    danger: { a: "#ff5442", b: "#c22e1e" },
-    busy: { a: "#ffd166", b: "#c99a1a" },
-  }[status] || { a: "#8a94a1", b: "#5b6472" };
+// Icona porta vista dall'alto (pianta), come nei disegni architettonici:
+// l'anta è una vera porta che RUOTA sul cardine — sdraiata nel vano quando è
+// chiusa, aperta verso l'interno quando è aperta — con una transizione
+// fluida, non uno scatto. Il colore segue lo stato (safe/warn/danger/busy)
+// tramite le classi CSS su .csc-card[data-status], non viene ridisegnata
+// a ogni aggiornamento: costruita una volta sola in _build(), sono le
+// classi CSS ad animarla (vedi .csc-leafgroup / .csc-leafrect nello style).
+function cscIconDoor() {
   return `
   <svg viewBox="0 0 100 100" class="csc-svg" xmlns="http://www.w3.org/2000/svg">
     <defs>
-      <linearGradient id="cscDoorBody" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#4a5261"/><stop offset=".5" stop-color="#3a4150"/><stop offset="1" stop-color="#2a3040"/></linearGradient>
-      <radialGradient id="cscLockGlow" cx="45%" cy="35%" r="70%"><stop offset="0" stop-color="${palette.a}"/><stop offset="1" stop-color="${palette.b}"/></radialGradient>
-      <radialGradient id="cscAmbGlow" cx="50%" cy="50%" r="60%"><stop offset="0" stop-color="${palette.a}" stop-opacity=".35"/><stop offset="1" stop-color="${palette.a}" stop-opacity="0"/></radialGradient>
+      <linearGradient id="cscWall" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#6b7482"/><stop offset="1" stop-color="#3a4150"/></linearGradient>
+      <radialGradient id="cscAmbGlow" cx="50%" cy="62%" r="65%"><stop offset="0" stop-color="#8a94a1" stop-opacity=".3"/><stop offset="1" stop-color="#8a94a1" stop-opacity="0"/></radialGradient>
       <radialGradient id="cscShadowDoor" cx="50%" cy="50%" r="50%"><stop offset="0" stop-color="#000" stop-opacity=".4"/><stop offset="1" stop-color="#000" stop-opacity="0"/></radialGradient>
     </defs>
-    <ellipse class="csc-glow" cx="50" cy="52" rx="34" ry="30" fill="url(#cscAmbGlow)"/>
-    <ellipse cx="50" cy="90" rx="26" ry="4.5" fill="url(#cscShadowDoor)"/>
-    <rect x="26" y="10" width="48" height="78" rx="4" fill="url(#cscDoorBody)" stroke="#12141a" stroke-width="1.6"/>
-    <rect x="31" y="15" width="38" height="68" rx="2" fill="none" stroke="#5b6472" stroke-width="1.2" opacity=".6"/>
-    <circle class="csc-lockled" cx="63" cy="50" r="9" fill="url(#cscLockGlow)"/>
-    <rect class="csc-lockled" x="59" y="46" width="8" height="10" rx="2" fill="#12141a" opacity=".55"/>
+    <ellipse class="csc-glow" cx="50" cy="60" rx="34" ry="30" fill="url(#cscAmbGlow)"/>
+    <ellipse cx="50" cy="93" rx="30" ry="4" fill="url(#cscShadowDoor)"/>
+    <line x1="2" y1="83" x2="27" y2="83" stroke="url(#cscWall)" stroke-width="8" stroke-linecap="round"/>
+    <line x1="73" y1="83" x2="98" y2="83" stroke="url(#cscWall)" stroke-width="8" stroke-linecap="round"/>
+    <path class="csc-swingarc" d="M 76 83 A 46 46 0 0 0 30 37" fill="none" stroke="#8a94a1" stroke-width="1.4" stroke-dasharray="3 4" opacity=".4"/>
+    <g class="csc-leafgroup">
+      <rect class="csc-leafrect" x="30" y="80" width="46" height="6" rx="2" fill="#8a94a1" stroke="#12141a" stroke-width="1"/>
+      <circle cx="70" cy="83" r="1.8" fill="#12141a" opacity=".6"/>
+    </g>
+    <circle cx="30" cy="83" r="4.5" fill="#12141a"/>
   </svg>`;
 }
 
@@ -104,8 +105,15 @@ class CentroSicurezzaCard extends HTMLElement {
       .csc-card[data-status="warn"] .csc-glow{opacity:.85;animation:csc-pulse 2.2s ease-in-out infinite}
       .csc-card[data-status="busy"] .csc-glow{opacity:.85;animation:csc-pulse .8s ease-in-out infinite}
       @keyframes csc-pulse{0%,100%{opacity:.4}50%{opacity:1}}
-      .csc-lockled{transition:opacity .4s}
-      .csc-card[data-status="danger"] .csc-lockled{filter:drop-shadow(0 0 6px #ff5442)}
+      .csc-leafgroup{transform-origin:30px 83px;transition:transform .7s cubic-bezier(.4,0,.2,1)}
+      .csc-card[data-dooropen="1"] .csc-leafgroup{transform:rotate(-78deg)}
+      .csc-leafrect{transition:fill .4s}
+      .csc-card[data-status="safe"] .csc-leafrect{fill:#38e08a}
+      .csc-card[data-status="warn"] .csc-leafrect{fill:#ffb020}
+      .csc-card[data-status="danger"] .csc-leafrect{fill:#ff5442}
+      .csc-card[data-status="busy"] .csc-leafrect{fill:#ffd166;animation:csc-blink .6s ease-in-out infinite}
+      .csc-swingarc{transition:opacity .4s}
+      .csc-card[data-dooropen="0"] .csc-swingarc{opacity:.15}
       .csc-name{font-size:16px;font-weight:800;margin-top:2px}
       .csc-state{font-size:13.5px;font-weight:800;color:var(--csc-muted);text-align:center}
       .csc-card[data-status="safe"] .csc-state{color:#8ff0b4}
@@ -148,7 +156,7 @@ class CentroSicurezzaCard extends HTMLElement {
     </style>
     <div class="csc">
       <div class="csc-card" data-role="card">
-        <div class="csc-iconwrap" data-role="iconwrap"></div>
+        <div class="csc-iconwrap" data-role="iconwrap">${cscIconDoor()}</div>
         <div class="csc-name">${this._esc(this._cfg.name)}</div>
         <div class="csc-state" data-role="state">—</div>
         <div class="csc-sub" data-role="sub"></div>
@@ -270,7 +278,7 @@ class CentroSicurezzaCard extends HTMLElement {
     else if (openSensors.length) { status = "warn"; stateLabel = "Sensori attivi"; }
 
     this._el.dataset.status = status;
-    this._el.querySelector('[data-role="iconwrap"]').innerHTML = cscIconDoor(status);
+    this._el.dataset.dooropen = doorOpen ? "1" : "0";
     this._el.querySelector('[data-role="state"]').textContent = stateLabel;
 
     const sub = [];
