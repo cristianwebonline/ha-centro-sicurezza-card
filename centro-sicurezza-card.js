@@ -4,7 +4,7 @@
  *  ultime attività dal logbook. Pensata per sostituire una vista fatta di
  *  tante mushroom-template-card ripetute, ognuna con il suo CSS a mano.
  */
-const CSC_VERSION = "2.0.0";
+const CSC_VERSION = "2.0.1";
 console.info(`%c CENTRO-SICUREZZA-CARD %c v${CSC_VERSION} `,
   "color:#2b0a0a;background:#ff5442;font-weight:700;border-radius:4px 0 0 4px",
   "color:#ffe0da;background:#1a1b21;border-radius:0 4px 4px 0");
@@ -147,7 +147,7 @@ class CentroSicurezzaCard extends HTMLElement {
       .csc-doorpanel{transform-origin:70px 240px;transition:transform .8s cubic-bezier(.4,0,.2,1)}
       .csc-card[data-dooropen="1"] .csc-doorpanel{transform:perspective(600px) rotateY(-65deg) skewY(2deg)}
       .csc-deadbolt{transition:transform .5s ease-in-out}
-      .csc-card[data-dooropen="1"] .csc-deadbolt{transform:translateX(-15px)}
+      .csc-card[data-locked="0"] .csc-deadbolt{transform:translateX(-15px)}
       .csc-sensorled{fill:#38e08a;filter:drop-shadow(0 0 4px #38e08a);transition:fill .4s ease,filter .4s ease}
       .csc-card[data-dooropen="1"] .csc-sensorled{fill:#ff5442;filter:drop-shadow(0 0 6px #ff5442)}
       .csc-name{font-size:16px;font-weight:800;margin-top:2px}
@@ -315,6 +315,11 @@ class CentroSicurezzaCard extends HTMLElement {
 
     this._el.dataset.status = status;
     this._el.dataset.dooropen = doorOpen ? "1" : "0";
+    // I pistoni blindati sono il catenaccio della SERRATURA: escono quando è
+    // bloccata, rientrano quando è sbloccata — indipendentemente dall'anta
+    // (che può essere chiusa ma non a chiave). Senza serratura configurata,
+    // restano a riposo "fuori" (aspetto bloccato) come default innocuo.
+    this._el.dataset.locked = (!cfg.lock || lockState === "locked" || lockState === "locking") ? "1" : "0";
     this._el.querySelector('[data-role="state"]').textContent = stateLabel;
 
     const sub = [];
