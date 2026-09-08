@@ -4,7 +4,7 @@
  *  ultime attività dal logbook. Pensata per sostituire una vista fatta di
  *  tante mushroom-template-card ripetute, ognuna con il suo CSS a mano.
  */
-const CSC_VERSION = "2.4.0";
+const CSC_VERSION = "2.4.1";
 console.info(`%c CENTRO-SICUREZZA-CARD %c v${CSC_VERSION} `,
   "color:#2b0a0a;background:#ff5442;font-weight:700;border-radius:4px 0 0 4px",
   "color:#ffe0da;background:#1a1b21;border-radius:0 4px 4px 0");
@@ -343,7 +343,9 @@ class CentroSicurezzaCard extends HTMLElement {
       /* I sensori si vedono senza aprire niente: il punto di una scheda di
          sicurezza e sapere a colpo d'occhio cosa e aperto. Quelli aperti
          restano in cima e sono gli unici colorati. */
-      .csc-sensori{display:grid;grid-template-columns:repeat(auto-fill,minmax(112px,1fr));gap:6px;
+      /* 112px stavano stretti: i nomi finivano tutti in "finestr..." e la
+         pastiglia diceva solo che esisteva un sensore, non quale. */
+      .csc-sensori{display:grid;grid-template-columns:repeat(auto-fill,minmax(152px,1fr));gap:6px;
         width:100%;margin-top:10px}
       .csc-sp{display:flex;align-items:center;gap:6px;padding:7px 9px;border-radius:12px;
         border:1px solid var(--csc-stroke,rgba(255,255,255,.12));background:rgba(255,255,255,.04);
@@ -359,6 +361,7 @@ class CentroSicurezzaCard extends HTMLElement {
         color:var(--csc-muted);padding:4px;cursor:pointer;text-decoration:underline}
       .csc-stipo{display:block;font-size:9.5px;font-weight:800;letter-spacing:.06em;
         text-transform:uppercase;color:var(--csc-muted);margin-top:1px}
+      .csc-btn:disabled{opacity:.38;cursor:not-allowed}
       .csc-etime{color:var(--csc-muted);white-space:nowrap;flex:0 0 auto}
     </style>
     <div class="csc">
@@ -695,6 +698,11 @@ class CentroSicurezzaCard extends HTMLElement {
     // aperta") — ripeterlo qui sotto è ridondante. Quando è chiusa invece è
     // un'informazione in più (utile insieme allo stato serratura), la teniamo.
     if (idPorta && !doorOpen) sub.push("🚪 Chiusa");
+    // Il Nuki si scollega di suo (e il mesh, non la scheda). Se si tace,
+    // sembra che l'informazione non ci sia mai stata: meglio dire che in
+    // questo momento non si riesce a parlarci.
+    if (cfg.lock && (!lockState || lockState === "unavailable" || lockState === "unknown"))
+      sub.push("🔌 Serratura non raggiungibile");
     // Con l'anta aperta lo stato grande dice gia "Aperta": qui sotto ci sta la
     // serratura, che resta utile sapere (aperta e sbloccata non e come aperta
     // col catenaccio ancora fuori).
@@ -732,7 +740,7 @@ class CentroSicurezzaCard extends HTMLElement {
       griglia.innerHTML = mostrati.map(x => `<div class="csc-sp" data-on="${x.on ? 1 : 0}" title="${this._esc(x.nome)}">
         <span class="csc-spi">${x.t.ico}</span>
         <span class="csc-spn">${this._esc(x.nome)}</span>
-        <span class="csc-spq">${x.on ? this._esc(x.t.aperto) : "ok"}</span>
+        <span class="csc-spq">${x.on ? this._esc(x.t.aperto) : ""}</span>
       </div>`).join("")
         + (con.length > mostrati.length
           ? `<div class="csc-spmore">e altri ${con.length - mostrati.length} — tocca per vederli tutti</div>` : "");
@@ -740,6 +748,14 @@ class CentroSicurezzaCard extends HTMLElement {
 
     const actions = this._el.querySelector('[data-role="actions"]');
     actions.hidden = !cfg.lock;
+    // Tre tasti che non fanno niente sembrano un guasto della scheda: se la
+    // serratura non risponde, si spengono e lo dicono.
+    const giu = !!cfg.lock && (!lockState || lockState === "unavailable" || lockState === "unknown");
+    actions.dataset.giu = giu ? "1" : "0";
+    actions.querySelectorAll("button").forEach(b => {
+      b.disabled = giu;
+      b.title = giu ? "La serratura non risponde in questo momento" : "";
+    });
     this._el.querySelector('[data-role="activitylink"]').hidden = !cfg.lock;
   }
 }
