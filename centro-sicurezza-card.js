@@ -4,7 +4,7 @@
  *  ultime attività dal logbook. Pensata per sostituire una vista fatta di
  *  tante mushroom-template-card ripetute, ognuna con il suo CSS a mano.
  */
-const CSC_VERSION = "2.3.1";
+const CSC_VERSION = "2.3.2";
 console.info(`%c CENTRO-SICUREZZA-CARD %c v${CSC_VERSION} `,
   "color:#2b0a0a;background:#ff5442;font-weight:700;border-radius:4px 0 0 4px",
   "color:#ffe0da;background:#1a1b21;border-radius:0 4px 4px 0");
@@ -377,9 +377,17 @@ class CentroSicurezzaCard extends HTMLElement {
           detail: { entityId: b.dataset.cam }, bubbles: true, composed: true,
         }));
       }));
+      // L'elenco e cambiato: le anteprime nuove vanno caricate subito, senza
+      // aspettare il prossimo giro del timer.
+      this._refreshCams();
     }
-    this._refreshCams();
+    // NON si ricaricano le immagini a ogni giro. _update() scatta a ogni
+    // cambio di stato in casa - con decine di sensori di potenza sono molte
+    // volte al secondo - e rimettere il src azzera il caricamento in corso:
+    // le anteprime restavano eternamente su "Carico...", senza mai arrivare.
+    // Si carica una volta sola, poi ci pensa il timer.
     if (!this._camTimer) {
+      this._refreshCams();
       // Le anteprime si aggiornano da sole, ma piano: sono fotogrammi singoli,
       // non uno streaming, e ogni richiesta impegna la telecamera.
       this._camTimer = setInterval(() => {
