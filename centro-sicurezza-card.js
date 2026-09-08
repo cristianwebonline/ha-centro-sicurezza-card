@@ -4,7 +4,7 @@
  *  ultime attività dal logbook. Pensata per sostituire una vista fatta di
  *  tante mushroom-template-card ripetute, ognuna con il suo CSS a mano.
  */
-const CSC_VERSION = "2.3.3";
+const CSC_VERSION = "2.3.4";
 console.info(`%c CENTRO-SICUREZZA-CARD %c v${CSC_VERSION} `,
   "color:#2b0a0a;background:#ff5442;font-weight:700;border-radius:4px 0 0 4px",
   "color:#ffe0da;background:#1a1b21;border-radius:0 4px 4px 0");
@@ -438,7 +438,9 @@ class CentroSicurezzaCard extends HTMLElement {
         img.dataset.try = String(n);
         if (n <= 2) {
           setTimeout(() => this._refreshCams(id), n * 2500);
-          if (maiVista) messaggio("Riprovo...");
+          // Nascondere l'immagine non e un dettaglio: un src fallito lascia
+          // l'iconcina di "immagine rotta" del browser stampata in un angolo.
+          if (maiVista) { img.style.visibility = "hidden"; messaggio("Riprovo..."); }
           return;
         }
         img.dataset.try = "0";
