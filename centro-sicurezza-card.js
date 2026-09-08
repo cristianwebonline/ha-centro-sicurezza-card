@@ -4,7 +4,7 @@
  *  ultime attività dal logbook. Pensata per sostituire una vista fatta di
  *  tante mushroom-template-card ripetute, ognuna con il suo CSS a mano.
  */
-const CSC_VERSION = "2.1.1";
+const CSC_VERSION = "2.2.0";
 console.info(`%c CENTRO-SICUREZZA-CARD %c v${CSC_VERSION} `,
   "color:#2b0a0a;background:#ff5442;font-weight:700;border-radius:4px 0 0 4px",
   "color:#ffe0da;background:#1a1b21;border-radius:0 4px 4px 0");
@@ -142,7 +142,7 @@ class CentroSicurezzaCard extends HTMLElement {
   _build() {
     this.innerHTML = `
     <style>
-      .csc{--csc-panel:rgba(30,38,48,.72);--csc-stroke:rgba(255,255,255,.09);--csc-ink:#eaf1f8;--csc-muted:#93a1b0;
+      .csc{--csc-panel:rgba(22,26,34,.86);--csc-stroke:rgba(255,255,255,.09);--csc-ink:#eaf1f8;--csc-muted:#93a1b0;
         font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",system-ui,sans-serif;color:var(--csc-ink);padding:6px;
         min-height:100%;display:flex;flex-direction:column}
       .csc *{box-sizing:border-box}
@@ -151,9 +151,13 @@ class CentroSicurezzaCard extends HTMLElement {
         box-shadow:0 10px 26px rgba(0,0,0,.35);position:relative;overflow:hidden;transition:background-color .5s,border-color .5s}
       .csc-card::before{content:"";position:absolute;inset:0;border-radius:22px;pointer-events:none;
         background:radial-gradient(120% 60% at 50% -10%,rgba(255,255,255,.06),transparent 60%)}
-      .csc-card[data-status="danger"]{background-color:rgba(255,84,66,.1);border-color:rgba(255,84,66,.32)}
-      .csc-card[data-status="warn"]{background-color:rgba(255,176,32,.08);border-color:rgba(255,176,32,.28)}
-      .csc-card[data-status="safe"]{background-color:rgba(56,224,138,.07);border-color:rgba(56,224,138,.24)}
+      /* La tinta dello stato va SOPRA il pannello, non al suo posto. Prima
+         sostituiva il background-color scuro con una velatura trasparente: su
+         un fondo scuro sembrava giusto, ma dentro Faber Home, col cielo chiaro
+         di giorno, il pannello spariva e restavano scritte bianche su azzurro. */
+      .csc-card[data-status="danger"]{background-image:linear-gradient(rgba(255,84,66,.16),rgba(255,84,66,.16));border-color:rgba(255,84,66,.36)}
+      .csc-card[data-status="warn"]{background-image:linear-gradient(rgba(255,176,32,.14),rgba(255,176,32,.14));border-color:rgba(255,176,32,.32)}
+      .csc-card[data-status="safe"]{background-image:linear-gradient(rgba(56,224,138,.12),rgba(56,224,138,.12));border-color:rgba(56,224,138,.28)}
       .csc-iconwrap{width:150px;height:187px}
       .csc-svg{width:100%;height:100%;display:block;filter:drop-shadow(0 6px 10px rgba(0,0,0,.35))}
       .csc-glow{opacity:.2;transition:opacity .5s}
