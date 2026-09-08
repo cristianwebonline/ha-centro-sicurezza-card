@@ -4,7 +4,7 @@
  *  ultime attività dal logbook. Pensata per sostituire una vista fatta di
  *  tante mushroom-template-card ripetute, ognuna con il suo CSS a mano.
  */
-const CSC_VERSION = "2.3.4";
+const CSC_VERSION = "2.4.0";
 console.info(`%c CENTRO-SICUREZZA-CARD %c v${CSC_VERSION} `,
   "color:#2b0a0a;background:#ff5442;font-weight:700;border-radius:4px 0 0 4px",
   "color:#ffe0da;background:#1a1b21;border-radius:0 4px 4px 0");
@@ -30,6 +30,23 @@ const CSC_ALARM = {
   unavailable: { t: "Non raggiungibile", s: "off" },
   unknown: { t: "Stato sconosciuto", s: "off" },
 };
+
+// Che cosa sorveglia un sensore. La device_class non aiuta: la centrale
+// iAlarm dichiara "door" per tutto, volumetrici e vibrazione compresi. Il
+// nome invece lo dice sempre, perche lo ha scritto chi ha montato l'impianto.
+const CSC_TIPI = [
+  { k: "vibrazione", re: /\bvibr/i,                        ico: "\u3030\ufe0f", et: "Vibrazione", aperto: "Scossa" },
+  { k: "movimento",  re: /volumetr|\bpir\b|movim|infrar/i,  ico: "\ud83d\udc63", et: "Volumetrico", aperto: "Movimento" },
+  { k: "finestra",   re: /finestr|\bfin\b|veland|lucern/i,  ico: "\ud83e\ude9f", et: "Finestra", aperto: "Aperta" },
+  { k: "porta",      re: /port|ingress|blindat|cancell/i,   ico: "\ud83d\udeaa", et: "Porta", aperto: "Aperta" },
+  { k: "fumo",       re: /fum|incend|gas/i,                 ico: "\ud83d\udd25", et: "Fumo", aperto: "Allarme" },
+  { k: "acqua",      re: /allag|acqua|perdit/i,             ico: "\ud83d\udca7", et: "Acqua", aperto: "Perdita" },
+];
+
+function cscTipo(nome) {
+  const t = CSC_TIPI.find(x => x.re.test(nome || ""));
+  return t || { k: "generico", ico: "\ud83d\udee1\ufe0f", et: "Sensore", aperto: "Attivo" };
+}
 
 // hass-swipe-navigation ignora già i gesti dentro <hui-card-edit-mode> (il
 // wrapper che HA mette intorno alla card in modifica dashboard) — usiamo lo
@@ -148,12 +165,64 @@ class CentroSicurezzaCard extends HTMLElement {
   _name(id) { const s = this._hass && this._hass.states[id]; return (s && s.attributes && s.attributes.friendly_name) || id; }
   _esc(s) { return String(s).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c])); }
 
-  // Righe tipo "entity_id" o "entity_id|Nome personalizzato".
+  // Righe tipo "entity_id" o "entity_id|Nome personalizzato". Se il campo e
+  // vuoto NON si resta a mani vuote: i sensori di un impianto d'allarme sono
+  // gia tutti li, attaccati alla stessa centrale, e chiedere di riscriverli a
+  // mano uno per uno era una richiesta senza motivo.
   _sensorList() {
-    return (this._cfg.sensors || "").split("\n").map(l => l.trim()).filter(Boolean).map(line => {
-      const [id, label] = line.split("|").map(s => s.trim());
+    const scritti = (this._cfg.sensors || "").split("\n").map(l => l.trim()).filter(Boolean).map(line => {
+      const [id, label] = line.split("|").map(x => x.trim());
       return { id, label: label || null };
     });
+    if (scritti.length) return scritti.map(x => Object.assign({}, x, { nome: x.label || this._nomeCorto(x.id) }));
+    return this._sensoriDellaCentrale();
+  }
+
+  // Tutti i sensori attaccati alla centrale configurata: prima quelli dello
+  // stesso apparecchio, e se il registro non li lega cosi, quelli della stessa
+  // integrazione. Il risultato si tiene da parte: il registro non cambia fra
+  // un aggiornamento di stato e l'altro, e rifare il giro su tremila entita a
+  // ogni battito di un sensore di potenza era una delle ragioni per cui questa
+  // scheda si trascinava.
+  _sensoriDellaCentrale() {
+    const cfg = this._cfg, hass = this._hass;
+    if (!cfg.alarm || !hass || !hass.entities) return [];
+    if (this._cacheSensori && this._cacheSensori.per === cfg.alarm) return this._cacheSensori.lista;
+    const centrale = hass.entities[cfg.alarm];
+    if (!centrale) return [];
+    const tutte = Object.values(hass.entities).filter(e => e.entity_id.indexOf("binary_sensor.") === 0);
+    let trovati = centrale.device_id ? tutte.filter(e => e.device_id === centrale.device_id) : [];
+    if (!trovati.length && centrale.platform) trovati = tutte.filter(e => e.platform === centrale.platform);
+    const lista = trovati
+      .map(e => ({ id: e.entity_id, label: null, nome: this._nomeCorto(e.entity_id) }))
+      .filter(x => !/batteria|battery|tamper|manomiss|guasto|alimentaz|carica/i.test(x.nome))
+      .sort((a, b) => a.nome.localeCompare(b.nome, "it"));
+    this._cacheSensori = { per: cfg.alarm, lista };
+    return lista;
+  }
+
+  // Il nome del registro ("porta blindata") invece del friendly_name, che si
+  // porta dietro il nome della centrale ("ALLARME CASA porta blindata") e
+  // riempirebbe l'elenco di dodici volte la stessa parola.
+  _nomeCorto(id) {
+    const reg = this._hass && this._hass.entities && this._hass.entities[id];
+    if (reg && reg.name) return reg.name;
+    const pieno = this._name(id);
+    const centrale = this._cfg.alarm && this._hass.states[this._cfg.alarm];
+    const pref = centrale && centrale.attributes && centrale.attributes.friendly_name;
+    if (pref && pieno.indexOf(pref) === 0) return pieno.slice(pref.length).trim() || pieno;
+    const m = pieno.match(/^[A-Z][A-Z\s]{3,}\s(.+)$/);
+    return m ? m[1] : pieno;
+  }
+
+  // Quale sensore dice se l'anta e aperta. Se non e stato scelto a mano, e
+  // quello di tipo porta fra i sensori della centrale: nella pratica c'e
+  // sempre, e senza di lui la scheda puo solo dire se la serratura e girata,
+  // che e un'altra cosa.
+  _sensorePorta() {
+    if (this._cfg.door_sensor) return this._cfg.door_sensor;
+    const porte = this._sensorList().filter(x => cscTipo(x.nome).k === "porta");
+    return porte.length ? porte[0].id : "";
   }
 
   _build() {
@@ -271,6 +340,25 @@ class CentroSicurezzaCard extends HTMLElement {
         padding:2px 7px;border-radius:20px;font-size:9px;font-weight:900;letter-spacing:.06em;
         background:rgba(0,0,0,.55);color:#fff}
       .csc-camlive i{width:5px;height:5px;border-radius:50%;background:#ff5442;animation:csc-blink 1.6s ease-in-out infinite}
+      /* I sensori si vedono senza aprire niente: il punto di una scheda di
+         sicurezza e sapere a colpo d'occhio cosa e aperto. Quelli aperti
+         restano in cima e sono gli unici colorati. */
+      .csc-sensori{display:grid;grid-template-columns:repeat(auto-fill,minmax(112px,1fr));gap:6px;
+        width:100%;margin-top:10px}
+      .csc-sp{display:flex;align-items:center;gap:6px;padding:7px 9px;border-radius:12px;
+        border:1px solid var(--csc-stroke,rgba(255,255,255,.12));background:rgba(255,255,255,.04);
+        font-size:11.5px;font-weight:700;text-align:left;line-height:1.25;overflow:hidden}
+      .csc-sp .csc-spi{flex:0 0 auto;font-size:13px;opacity:.75}
+      .csc-sp .csc-spn{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+      .csc-sp .csc-spq{flex:0 0 auto;font-size:9.5px;font-weight:900;letter-spacing:.05em;
+        text-transform:uppercase;opacity:.55}
+      .csc-sp[data-on="1"]{background:rgba(255,84,66,.16);border-color:rgba(255,84,66,.45);color:#ffd9d3}
+      .csc-sp[data-on="1"] .csc-spq{opacity:1;color:#ff8f8f}
+      .csc-sp[data-on="1"] .csc-spi{opacity:1;animation:csc-blink 1.8s ease-in-out infinite}
+      .csc-spmore{grid-column:1/-1;text-align:center;font-size:11px;font-weight:700;
+        color:var(--csc-muted);padding:4px;cursor:pointer;text-decoration:underline}
+      .csc-stipo{display:block;font-size:9.5px;font-weight:800;letter-spacing:.06em;
+        text-transform:uppercase;color:var(--csc-muted);margin-top:1px}
       .csc-etime{color:var(--csc-muted);white-space:nowrap;flex:0 0 auto}
     </style>
     <div class="csc">
@@ -281,6 +369,7 @@ class CentroSicurezzaCard extends HTMLElement {
         <div class="csc-state" data-role="state">—</div>
         <div class="csc-sub" data-role="sub"></div>
         <div class="csc-badge" data-role="sensorbadge" hidden>—</div>
+        <div class="csc-sensori" data-role="sensori" hidden></div>
         <div class="csc-actions" data-role="actions" hidden>
           <button class="csc-btn" data-role="btn-unlock">🔓 Sblocca</button>
           <button class="csc-btn" data-role="btn-lock">🔒 Blocca</button>
@@ -296,6 +385,7 @@ class CentroSicurezzaCard extends HTMLElement {
     this.querySelector('[data-role="btn-unlock"]').onclick = () => this._confirm("Sbloccare la porta?", () => this._call("lock", "unlock"));
     this.querySelector('[data-role="btn-open"]').onclick = () => this._confirm("Aprire la porta blindata?", () => this._call("lock", "open"));
     this.querySelector('[data-role="sensorbadge"]').onclick = () => this._openSensors();
+    this.querySelector('[data-role="sensori"]').onclick = () => this._openSensors();
     this.querySelector('[data-role="activitylink"]').onclick = () => this._openActivity();
   }
 
@@ -487,16 +577,22 @@ class CentroSicurezzaCard extends HTMLElement {
     if (!ov) { ov = document.createElement("div"); ov.className = "csc-scrim sensors"; this.querySelector(".csc").appendChild(ov); }
     const list = this._sensorList().map(s => {
       const st = this._hass.states[s.id];
-      return { ...s, on: !!(st && st.state === "on") };
+      return Object.assign({}, s, { on: !!(st && st.state === "on"), t: cscTipo(s.nome) });
     });
     // I sensori aperti/attivi vanno in cima, ben visibili — non deve servire
     // scorrere l'elenco per capire quale sia scattato.
     list.sort((a, b) => (b.on ? 1 : 0) - (a.on ? 1 : 0));
     const openCount = list.filter(s => s.on).length;
+    // Ogni riga dice che tipo di sensore e e cosa vuol dire il suo stato: per
+    // un magnete "aperta", per un volumetrico "movimento", per una vibrazione
+    // "scossa". Un unico "aperto/attivo" per tutti costringeva a ricordare a
+    // memoria che cosa fosse ciascuno.
     const rows = list.map(s => {
-      const label = s.label || this._name(s.id);
-      return `<div class="csc-srow" data-on="${s.on ? 1 : 0}"><span class="csc-sdot"></span><span style="flex:1">${this._esc(label)}</span>
-        <span>${s.on ? "⚠️ Aperto/attivo" : "OK"}</span></div>`;
+      const label = s.nome || s.label || this._name(s.id);
+      return `<div class="csc-srow" data-on="${s.on ? 1 : 0}"><span class="csc-sdot"></span>
+        <span style="flex:0 0 auto">${s.t.ico}</span>
+        <span style="flex:1">${this._esc(label)}<span class="csc-stipo">${this._esc(s.t.et)}</span></span>
+        <span>${s.on ? "⚠️ " + this._esc(s.t.aperto) : "a posto"}</span></div>`;
     }).join("");
     ov.innerHTML = `<div class="csc-modal">
       <div class="csc-mh"><div><div class="csc-mt">Sensori</div>
@@ -545,7 +641,23 @@ class CentroSicurezzaCard extends HTMLElement {
     }
   }
 
+  // In casa ci sono centinaia di sensori di potenza che cambiano piu volte al
+  // secondo, e "set hass" scatta a OGNI cambiamento: questa scheda si
+  // ridisegnava per intero decine di volte al secondo per dati che non la
+  // riguardano. Ora prima si guarda se e cambiato qualcosa di suo, e nel caso
+  // quasi sempre normale non si fa niente.
+  _impronta() {
+    const cfg = this._cfg, H = this._hass.states;
+    const v = id => { const st = id && H[id]; return st ? st.state : "-"; };
+    const parti = [v(cfg.lock), v(this._sensorePorta()), v(cfg.battery), v(cfg.alarm)];
+    this._sensorList().forEach(x => parti.push(v(x.id)));
+    return parti.join("|");
+  }
+
   _update() {
+    const ora = this._impronta();
+    if (ora === this._segno) return;
+    this._segno = ora;
     this._drawAlarm();
     this._drawCams();
     const cardEl = this.querySelector('[data-role="card"]');
@@ -553,12 +665,17 @@ class CentroSicurezzaCard extends HTMLElement {
     if (!this._el) return;
     const cfg = this._cfg;
     const lockState = cfg.lock && this._hass.states[cfg.lock] ? this._hass.states[cfg.lock].state : null;
-    const doorOpen = cfg.door_sensor ? this._hass.states[cfg.door_sensor] && this._hass.states[cfg.door_sensor].state === "on" : false;
-    const sensors = this._sensorList();
+    const idPorta = this._sensorePorta();
+    const doorOpen = idPorta ? !!(this._hass.states[idPorta] && this._hass.states[idPorta].state === "on") : false;
+    const sensors = this._sensorList().filter(x => x.id !== idPorta);
     const openSensors = sensors.filter(s => { const st = this._hass.states[s.id]; return st && st.state === "on"; });
 
     let status = "safe", stateLabel = "—";
-    if (doorOpen) { status = "danger"; stateLabel = "🚪 Anta aperta"; }
+    // Aperta batte sbloccata. Erano due cose diverse dette come se fossero la
+    // stessa: la serratura puo essere girata o no, ma se l'anta e aperta
+    // quello e cio che conta. Prima si leggeva "Sbloccata" con la porta
+    // spalancata, perche il sensore dell'anta non era nemmeno collegato.
+    if (doorOpen) { status = "danger"; stateLabel = "🚪 Aperta"; }
     else if (lockState === "locking" || lockState === "unlocking") { status = "busy"; stateLabel = lockState === "locking" ? "Bloccaggio in corso..." : "Sbloccaggio in corso..."; }
     else if (lockState === "unlocked") { status = "warn"; stateLabel = "🔓 Sbloccata"; }
     else if (lockState === "locked") { status = openSensors.length ? "warn" : "safe"; stateLabel = "🔒 Bloccata"; }
@@ -577,7 +694,12 @@ class CentroSicurezzaCard extends HTMLElement {
     // Quando l'anta è aperta lo dice già lo stato grande sopra ("🚪 Anta
     // aperta") — ripeterlo qui sotto è ridondante. Quando è chiusa invece è
     // un'informazione in più (utile insieme allo stato serratura), la teniamo.
-    if (cfg.door_sensor && !doorOpen) sub.push("🚪 Chiusa");
+    if (idPorta && !doorOpen) sub.push("🚪 Chiusa");
+    // Con l'anta aperta lo stato grande dice gia "Aperta": qui sotto ci sta la
+    // serratura, che resta utile sapere (aperta e sbloccata non e come aperta
+    // col catenaccio ancora fuori).
+    if (doorOpen && lockState === "unlocked") sub.push("🔓 Serratura sbloccata");
+    if (doorOpen && (lockState === "locked" || lockState === "locking")) sub.push("🔒 Serratura bloccata");
     if (cfg.battery) { const b = this._num(cfg.battery); if (b != null) sub.push(`🔋 ${Math.round(b)}%`); }
     this._el.querySelector('[data-role="sub"]').innerHTML = sub.map(s => `<span>${s}</span>`).join("");
 
@@ -594,6 +716,27 @@ class CentroSicurezzaCard extends HTMLElement {
         badge.textContent = `🚨 ${names}`;
       } else badge.textContent = `🚨 ${openSensors.length} sensori aperti/attivi — tocca per vedere quali`;
     } else badge.hidden = true;
+
+    // La griglia: prima gli aperti, poi gli altri. Oltre una certa quantita si
+    // mostrano solo i primi, senno la scheda diventa un elenco del telefono;
+    // ma se gli aperti sono tanti si allunga per farceli stare tutti, perche
+    // quelli sono esattamente cio che si vuole vedere.
+    const griglia = this._el.querySelector('[data-role="sensori"]');
+    if (sensors.length) {
+      griglia.hidden = false;
+      const con = sensors.map(x => {
+        const st = this._hass.states[x.id];
+        return Object.assign({}, x, { on: !!(st && st.state === "on"), t: cscTipo(x.nome) });
+      }).sort((a, b) => (b.on ? 1 : 0) - (a.on ? 1 : 0) || a.nome.localeCompare(b.nome, "it"));
+      const mostrati = con.slice(0, Math.max(8, openSensors.length));
+      griglia.innerHTML = mostrati.map(x => `<div class="csc-sp" data-on="${x.on ? 1 : 0}" title="${this._esc(x.nome)}">
+        <span class="csc-spi">${x.t.ico}</span>
+        <span class="csc-spn">${this._esc(x.nome)}</span>
+        <span class="csc-spq">${x.on ? this._esc(x.t.aperto) : "ok"}</span>
+      </div>`).join("")
+        + (con.length > mostrati.length
+          ? `<div class="csc-spmore">e altri ${con.length - mostrati.length} — tocca per vederli tutti</div>` : "");
+    } else griglia.hidden = true;
 
     const actions = this._el.querySelector('[data-role="actions"]');
     actions.hidden = !cfg.lock;
@@ -714,8 +857,8 @@ class CentroSicurezzaCardEditor extends HTMLElement {
       ${this._pickerHTML("door_sensor", ["binary_sensor."], c.door_sensor, "Sensore anta aperta/chiusa — opzionale")}
       ${this._pickerHTML("battery", ["sensor."], c.battery, "Sensore batteria — opzionale")}
       <div class="fld"><label>Altri sensori da riepilogare (finestre, volumetrici...)</label>
-        <span class="h">Un'entità per riga, es. binary_sensor.finestra_sala oppure binary_sensor.finestra_sala|Finestra Sala per dargli un nome</span>
-        <textarea id="f_sensors" placeholder="binary_sensor.finestra_sala|Finestra Sala&#10;binary_sensor.volumetrico_sala">${this._esc(c.sensors || "")}</textarea></div>
+        <span class="h">Lascia vuoto: i sensori attaccati alla centrale scelta qui sopra li trova da solo, con il loro nome. Scrivili solo se ne vuoi alcuni o vuoi rinominarli — un'entità per riga, es. binary_sensor.finestra_sala oppure binary_sensor.finestra_sala|Finestra Sala</span>
+        <textarea id="f_sensors" placeholder="vuoto = li trova da solo dalla centrale">${this._esc(c.sensors || "")}</textarea></div>
       <div class="fld"><label>Telecamere — opzionale</label>
         <span class="h">Una per riga, es. camera.telecamera_giardino oppure camera.telecamera_giardino|Giardino per dargli un nome. Le anteprime si aggiornano da sole; al tocco si apre il video dal vivo.</span>
         <textarea id="f_cams" placeholder="camera.telecamera_giardino|Giardino&#10;camera.telecamera_sala|Sala">${this._esc(c.cameras || "")}</textarea>
