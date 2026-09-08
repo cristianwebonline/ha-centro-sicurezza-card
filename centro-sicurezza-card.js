@@ -4,7 +4,7 @@
  *  ultime attività dal logbook. Pensata per sostituire una vista fatta di
  *  tante mushroom-template-card ripetute, ognuna con il suo CSS a mano.
  */
-const CSC_VERSION = "2.2.0";
+const CSC_VERSION = "2.3.0";
 console.info(`%c CENTRO-SICUREZZA-CARD %c v${CSC_VERSION} `,
   "color:#2b0a0a;background:#ff5442;font-weight:700;border-radius:4px 0 0 4px",
   "color:#ffe0da;background:#1a1b21;border-radius:0 4px 4px 0");
@@ -12,6 +12,23 @@ console.info(`%c CENTRO-SICUREZZA-CARD %c v${CSC_VERSION} `,
 const CSC_DEFAULTS = {
   name: "Porta Blindata",
   lock: "", door_sensor: "", battery: "", sensors: "",
+  alarm: "", cameras: "", mostra_porta: true,
+};
+
+// Come si chiamano gli stati di un impianto d'allarme, detti in italiano.
+const CSC_ALARM = {
+  disarmed: { t: "Disinserito", s: "safe" },
+  armed_home: { t: "Inserito in casa", s: "warn" },
+  armed_away: { t: "Inserito fuori casa", s: "warn" },
+  armed_night: { t: "Inserito notte", s: "warn" },
+  armed_vacation: { t: "Inserito vacanza", s: "warn" },
+  armed_custom_bypass: { t: "Inserito parziale", s: "warn" },
+  arming: { t: "Inserimento in corso", s: "busy" },
+  pending: { t: "Ingresso in corso", s: "busy" },
+  disarming: { t: "Disinserimento", s: "busy" },
+  triggered: { t: "ALLARME IN CORSO", s: "danger" },
+  unavailable: { t: "Non raggiungibile", s: "off" },
+  unknown: { t: "Stato sconosciuto", s: "off" },
 };
 
 // hass-swipe-navigation ignora già i gesti dentro <hui-card-edit-mode> (il
@@ -209,9 +226,51 @@ class CentroSicurezzaCard extends HTMLElement {
       .csc-confirm-row{display:flex;gap:10px}
       .csc-erow{display:flex;gap:10px;padding:8px 0;border-bottom:1px solid var(--csc-stroke);font-size:12px}
       .csc-erow:last-child{border-bottom:none}
+      /* ------------------------------------------------------------ allarme */
+      .csc-alarm{background:var(--csc-panel);border:1px solid var(--csc-stroke);border-radius:20px;
+        padding:13px 14px;margin-bottom:10px;backdrop-filter:blur(14px);
+        box-shadow:0 8px 22px rgba(0,0,0,.3);transition:background-image .4s,border-color .4s}
+      .csc-alarm[data-s="safe"]{background-image:linear-gradient(rgba(56,224,138,.12),rgba(56,224,138,.12));border-color:rgba(56,224,138,.3)}
+      .csc-alarm[data-s="warn"]{background-image:linear-gradient(rgba(255,176,32,.14),rgba(255,176,32,.14));border-color:rgba(255,176,32,.34)}
+      .csc-alarm[data-s="busy"]{background-image:linear-gradient(rgba(255,176,32,.18),rgba(255,176,32,.18));border-color:rgba(255,176,32,.5)}
+      .csc-alarm[data-s="danger"]{background-image:linear-gradient(rgba(255,84,66,.2),rgba(255,84,66,.2));border-color:rgba(255,84,66,.55);
+        animation:csc-blink 1s ease-in-out infinite}
+      .csc-ahead{display:flex;align-items:center;gap:10px;margin-bottom:11px}
+      .csc-aico{width:38px;height:38px;border-radius:13px;display:flex;align-items:center;justify-content:center;flex:0 0 auto;
+        background:rgba(255,255,255,.07);border:1px solid var(--csc-stroke);font-size:19px}
+      .csc-atxt{flex:1;min-width:0}
+      .csc-alab{font-size:10px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:var(--csc-muted)}
+      .csc-aval{font-size:15px;font-weight:800;color:var(--csc-ink);margin-top:2px;
+        overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+      .csc-alarm[data-s="safe"] .csc-aval{color:#8ff0b4}
+      .csc-alarm[data-s="warn"] .csc-aval,.csc-alarm[data-s="busy"] .csc-aval{color:#ffd28a}
+      .csc-alarm[data-s="danger"] .csc-aval{color:#ffb0a3}
+      .csc-abtns{display:grid;grid-template-columns:repeat(auto-fit,minmax(92px,1fr));gap:7px}
+      .csc-ab{padding:9px 6px;border-radius:12px;cursor:pointer;font:inherit;font-size:12px;font-weight:800;
+        border:1px solid var(--csc-stroke);background:rgba(255,255,255,.06);color:var(--csc-ink);
+        display:flex;align-items:center;justify-content:center;gap:5px;transition:background .18s,border-color .18s}
+      .csc-ab:hover{background:rgba(255,255,255,.11)}
+      .csc-ab.sel{border-color:rgba(255,176,32,.65);background:rgba(255,176,32,.2);color:#ffe9c2}
+      .csc-ab.off.sel{border-color:rgba(56,224,138,.6);background:rgba(56,224,138,.18);color:#8ff0b4}
+      /* --------------------------------------------------------- telecamere */
+      .csc-cams{display:grid;grid-template-columns:repeat(auto-fit,minmax(132px,1fr));gap:8px;margin-top:10px}
+      .csc-cam{position:relative;border-radius:16px;overflow:hidden;cursor:pointer;aspect-ratio:16/10;
+        border:1px solid var(--csc-stroke);background:#0d1016;padding:0;font:inherit;display:block;width:100%}
+      .csc-cam img{width:100%;height:100%;object-fit:cover;display:block;transition:transform .5s ease}
+      .csc-cam:hover img{transform:scale(1.05)}
+      .csc-camoff{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
+        color:var(--csc-muted);font-size:11.5px;font-weight:700;text-align:center;padding:8px}
+      .csc-camlab{position:absolute;left:0;right:0;bottom:0;padding:16px 9px 7px;text-align:left;
+        font-size:11.5px;font-weight:800;color:#fff;text-shadow:0 1px 4px rgba(0,0,0,.9);
+        background:linear-gradient(transparent,rgba(0,0,0,.72))}
+      .csc-camlive{position:absolute;top:7px;right:7px;display:flex;align-items:center;gap:4px;
+        padding:2px 7px;border-radius:20px;font-size:9px;font-weight:900;letter-spacing:.06em;
+        background:rgba(0,0,0,.55);color:#fff}
+      .csc-camlive i{width:5px;height:5px;border-radius:50%;background:#ff5442;animation:csc-blink 1.6s ease-in-out infinite}
       .csc-etime{color:var(--csc-muted);white-space:nowrap;flex:0 0 auto}
     </style>
     <div class="csc">
+      <div class="csc-alarm" data-role="alarm" hidden></div>
       <div class="csc-card" data-role="card">
         <div class="csc-iconwrap" data-role="iconwrap">${cscIconDoor()}</div>
         <div class="csc-name">${this._esc(this._cfg.name)}</div>
@@ -225,6 +284,7 @@ class CentroSicurezzaCard extends HTMLElement {
         </div>
         <div class="csc-link" data-role="activitylink" hidden>Ultime attività</div>
       </div>
+      <div class="csc-cams" data-role="cams" hidden></div>
     </div>`;
     stopSwipeNavHijack(this.querySelector(".csc"));
     this._el = this.querySelector('[data-role="card"]');
@@ -233,6 +293,116 @@ class CentroSicurezzaCard extends HTMLElement {
     this.querySelector('[data-role="btn-open"]').onclick = () => this._confirm("Aprire la porta blindata?", () => this._call("lock", "open"));
     this.querySelector('[data-role="sensorbadge"]').onclick = () => this._openSensors();
     this.querySelector('[data-role="activitylink"]').onclick = () => this._openActivity();
+  }
+
+
+  // ------------------------------------------------------------- allarme
+  _drawAlarm() {
+    const box = this.querySelector('[data-role="alarm"]');
+    if (!box) return;
+    const id = this._cfg.alarm;
+    const st = id && this._hass ? this._hass.states[id] : null;
+    if (!st) { box.hidden = true; return; }
+    box.hidden = false;
+    const info = CSC_ALARM[st.state] || { t: st.state, s: "off" };
+    box.dataset.s = info.s;
+    // Si mostrano solo i modi che l'impianto dichiara di conoscere: proporre
+    // "notte" a una centrale che non ce l'ha significa un tasto che fallisce.
+    const f = st.attributes.supported_features || 0;
+    const modi = [];
+    if (f & 1) modi.push({ k: "alarm_arm_home", t: "In casa", i: "\ud83c\udfe0", stato: "armed_home" });
+    if (f & 2) modi.push({ k: "alarm_arm_away", t: "Fuori", i: "\ud83d\udeaa", stato: "armed_away" });
+    if (f & 4) modi.push({ k: "alarm_arm_night", t: "Notte", i: "\ud83c\udf19", stato: "armed_night" });
+    const nome = st.attributes.friendly_name || "Allarme";
+    box.innerHTML = `
+      <div class="csc-ahead">
+        <div class="csc-aico">${info.s === "danger" ? "\ud83d\udea8" : info.s === "safe" ? "\ud83d\udee1\ufe0f" : "\ud83d\udd12"}</div>
+        <div class="csc-atxt">
+          <div class="csc-alab">${this._esc(nome)}</div>
+          <div class="csc-aval">${this._esc(info.t)}</div>
+        </div>
+      </div>
+      <div class="csc-abtns">
+        <button class="csc-ab off${st.state === "disarmed" ? " sel" : ""}" data-srv="alarm_disarm">\ud83d\udd13 Disinserisci</button>
+        ${modi.map(m => `<button class="csc-ab${st.state === m.stato ? " sel" : ""}" data-srv="${m.k}">${m.i} ${m.t}</button>`).join("")}
+      </div>`;
+    box.querySelectorAll("[data-srv]").forEach(b => b.addEventListener("click", () => {
+      const srv = b.dataset.srv;
+      const dom = "alarm_control_panel";
+      // Inserire e disinserire un allarme non e un gesto da sfiorare per
+      // sbaglio: si conferma sempre, come per la porta.
+      this._confirm(srv === "alarm_disarm" ? "Disinserire l'allarme?" : "Inserire l'allarme?", () => {
+        const dati = { entity_id: this._cfg.alarm };
+        if (st.attributes.code_format && this._cfg.code) dati.code = this._cfg.code;
+        this._hass.callService(dom, srv, dati);
+      });
+    }));
+  }
+
+  // ---------------------------------------------------------- telecamere
+  _camList() {
+    return (this._cfg.cameras || "").split("\n").map(l => l.trim()).filter(Boolean).map(line => {
+      const [id, label] = line.split("|").map(x => x.trim());
+      return { id, label: label || null };
+    });
+  }
+
+  _drawCams() {
+    const box = this.querySelector('[data-role="cams"]');
+    if (!box) return;
+    const list = this._camList();
+    if (!list.length || !this._hass) { box.hidden = true; return; }
+    box.hidden = false;
+    // Si ridisegna la struttura solo se cambia l'elenco: rifarla a ogni giro
+    // farebbe ripartire tutte le immagini da capo, con uno sfarfallio continuo.
+    const firma = list.map(c => c.id).join(",");
+    if (box.dataset.firma !== firma) {
+      box.dataset.firma = firma;
+      box.innerHTML = list.map(c => {
+        const st = this._hass.states[c.id];
+        const nome = c.label || (st && st.attributes.friendly_name) || c.id;
+        return `<button type="button" class="csc-cam" data-cam="${this._esc(c.id)}">
+          <img data-img="${this._esc(c.id)}" alt="">
+          <div class="csc-camoff" data-off="${this._esc(c.id)}" hidden>Non raggiungibile</div>
+          <div class="csc-camlive"><i></i>LIVE</div>
+          <div class="csc-camlab">${this._esc(nome)}</div>
+        </button>`;
+      }).join("");
+      box.querySelectorAll("[data-cam]").forEach(b => b.addEventListener("click", () => {
+        this.dispatchEvent(new CustomEvent("hass-more-info", {
+          detail: { entityId: b.dataset.cam }, bubbles: true, composed: true,
+        }));
+      }));
+    }
+    this._refreshCams();
+    if (!this._camTimer) {
+      // Le anteprime si aggiornano da sole, ma piano: sono fotogrammi singoli,
+      // non uno streaming, e ogni richiesta impegna la telecamera.
+      this._camTimer = setInterval(() => {
+        if (!document.hidden && this.isConnected) this._refreshCams();
+      }, 12000);
+    }
+  }
+
+  _refreshCams() {
+    this.querySelectorAll("[data-img]").forEach(img => {
+      const st = this._hass.states[img.dataset.img];
+      const off = this.querySelector(`[data-off="${CSS.escape(img.dataset.img)}"]`);
+      const pic = st && st.attributes && st.attributes.entity_picture;
+      if (!pic || st.state === "unavailable") {
+        img.removeAttribute("src");
+        img.style.visibility = "hidden";
+        if (off) off.hidden = false;
+        return;
+      }
+      img.style.visibility = "";
+      if (off) off.hidden = true;
+      img.src = pic + (pic.includes("?") ? "&" : "?") + "t=" + Date.now();
+    });
+  }
+
+  disconnectedCallback() {
+    if (this._camTimer) { clearInterval(this._camTimer); this._camTimer = null; }
   }
 
   _call(domain, service) {
@@ -320,6 +490,10 @@ class CentroSicurezzaCard extends HTMLElement {
   }
 
   _update() {
+    this._drawAlarm();
+    this._drawCams();
+    const cardEl = this.querySelector('[data-role="card"]');
+    if (cardEl) cardEl.hidden = this._cfg.mostra_porta === false || !this._cfg.lock;
     if (!this._el) return;
     const cfg = this._cfg;
     const lockState = cfg.lock && this._hass.states[cfg.lock] ? this._hass.states[cfg.lock].state : null;
@@ -471,20 +645,49 @@ class CentroSicurezzaCardEditor extends HTMLElement {
       .csc-opt:hover{background:rgba(var(--rgb-primary-color,3,169,244),.14)}
       .csc-opt small{display:block;font-size:10px;color:var(--secondary-text-color);margin-top:1px}
       .csc-opt-empty{color:var(--secondary-text-color);cursor:default}
+      .cse-auto{margin-top:6px;padding:8px 10px;border-radius:9px;cursor:pointer;font:inherit;font-size:12.5px;font-weight:700;
+        border:1px solid var(--divider-color);background:var(--card-background-color);color:var(--primary-text-color)}
+      .cse-auto:hover{border-color:rgba(255,176,32,.55)}
+      .cse-check label{display:flex;align-items:center;gap:8px;cursor:pointer}
+      .cse-check input{width:auto}
     </style>
     <div class="cse">
       <div class="fld"><label>Nome</label><input type="text" id="f_name" value="${(c.name || "").replace(/"/g, "&quot;")}"></div>
+      ${this._pickerHTML("alarm", ["alarm_control_panel."], c.alarm, "Impianto d'allarme — opzionale", "compare in cima con lo stato e i tasti per inserirlo; i modi mostrati sono solo quelli che la centrale dichiara di conoscere")}
       ${this._pickerHTML("lock", ["lock."], c.lock, "Serratura (lock.*)", "opzionale — senza, i tasti blocca/sblocca/apri restano nascosti")}
       ${this._pickerHTML("door_sensor", ["binary_sensor."], c.door_sensor, "Sensore anta aperta/chiusa — opzionale")}
       ${this._pickerHTML("battery", ["sensor."], c.battery, "Sensore batteria — opzionale")}
       <div class="fld"><label>Altri sensori da riepilogare (finestre, volumetrici...)</label>
         <span class="h">Un'entità per riga, es. binary_sensor.finestra_sala oppure binary_sensor.finestra_sala|Finestra Sala per dargli un nome</span>
         <textarea id="f_sensors" placeholder="binary_sensor.finestra_sala|Finestra Sala&#10;binary_sensor.volumetrico_sala">${this._esc(c.sensors || "")}</textarea></div>
+      <div class="fld"><label>Telecamere — opzionale</label>
+        <span class="h">Una per riga, es. camera.telecamera_giardino oppure camera.telecamera_giardino|Giardino per dargli un nome. Le anteprime si aggiornano da sole; al tocco si apre il video dal vivo.</span>
+        <textarea id="f_cams" placeholder="camera.telecamera_giardino|Giardino&#10;camera.telecamera_sala|Sala">${this._esc(c.cameras || "")}</textarea>
+        <button type="button" class="cse-auto" id="f_camauto">Prendi tutte le telecamere della casa</button></div>
+      <div class="fld cse-check"><label><input type="checkbox" id="f_porta"${c.mostra_porta === false ? "" : " checked"}> Mostra il riquadro della porta</label>
+        <span class="h">Togli la spunta se vuoi un centro di sola sorveglianza: allarme e telecamere, senza la porta.</span></div>
       <div class="note">💡 La card mostra "✅ Tutto chiuso" o "🚨 N aperti" e, toccando, l'elenco di quali. Tocca "Ultime attività" per lo storico della serratura (serve la serratura configurata).</div>
     </div>`;
     const on = (id, ev, fn) => { const el = this.querySelector(id); if (el) el.addEventListener(ev, fn); };
     on("#f_name", "input", e => this._set("name", e.target.value));
     on("#f_sensors", "input", e => this._set("sensors", e.target.value));
+    on("#f_cams", "input", e => this._set("cameras", e.target.value));
+    on("#f_porta", "change", e => this._set("mostra_porta", e.target.checked));
+    // Scriverle a mano una per una e' lavoro inutile: le telecamere le sa gia
+    // Home Assistant. Si scartano quelle che non sono di sorveglianza (il
+    // browser, i tablet, il flusso della stampante 3D).
+    on("#f_camauto", "click", () => {
+      const hs = this._hass ? this._hass.states : {};
+      const scarto = /browser_mod|tablet|stampante|printer|^camera\.[0-9a-f]{8}_/i;
+      const righe = Object.keys(hs)
+        .filter(id => id.startsWith("camera.") && !scarto.test(id))
+        .map(id => {
+          const n = (hs[id].attributes && hs[id].attributes.friendly_name) || "";
+          return n ? id + "|" + n : id;
+        });
+      this._set("cameras", righe.join("\n"));
+      this._render();
+    });
     this.querySelectorAll(".csc-picker").forEach(p => this._wirePicker(p));
     this.querySelectorAll('input[type="text"], textarea').forEach(inp => {
       inp.addEventListener("focus", () => { this._typingLock = true; });
@@ -498,7 +701,7 @@ window.customCards = window.customCards || [];
 window.customCards.push({
   type: "centro-sicurezza-card",
   name: "Centro Sicurezza Card",
-  description: "Porta blindata/serratura + sensori d'allarme in una card sola: blocca/sblocca/apri con conferma, stato anta, batteria, panoramica sensori con dettaglio, ultime attività.",
+  description: "Centro sicurezza: impianto d'allarme con inserimento, porta blindata, sensori di finestre e volumetrici, e le telecamere con anteprima dal vivo. Tutto in una card.",
   preview: true,
   documentationURL: "https://github.com/cristianwebonline/ha-centro-sicurezza-card",
 });
