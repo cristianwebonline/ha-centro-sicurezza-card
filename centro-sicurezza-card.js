@@ -4,7 +4,7 @@
  *  ultime attività dal logbook. Pensata per sostituire una vista fatta di
  *  tante mushroom-template-card ripetute, ognuna con il suo CSS a mano.
  */
-const CSC_VERSION = "2.3.2";
+const CSC_VERSION = "2.3.3";
 console.info(`%c CENTRO-SICUREZZA-CARD %c v${CSC_VERSION} `,
   "color:#2b0a0a;background:#ff5442;font-weight:700;border-radius:4px 0 0 4px",
   "color:#ffe0da;background:#1a1b21;border-radius:0 4px 4px 0");
@@ -368,7 +368,7 @@ class CentroSicurezzaCard extends HTMLElement {
         return `<button type="button" class="csc-cam" data-cam="${this._esc(c.id)}">
           <img data-img="${this._esc(c.id)}" alt="">
           <div class="csc-camoff" data-off="${this._esc(c.id)}" hidden>Non raggiungibile</div>
-          <div class="csc-camlive"><i></i>LIVE</div>
+          <div class="csc-camlive"><i></i><span data-eta="${this._esc(c.id)}">LIVE</span></div>
           <div class="csc-camlab">${this._esc(nome)}</div>
         </button>`;
       }).join("");
@@ -392,33 +392,66 @@ class CentroSicurezzaCard extends HTMLElement {
       // non uno streaming, e ogni richiesta impegna la telecamera.
       this._camTimer = setInterval(() => {
         if (!document.hidden && this.isConnected) this._refreshCams();
-      }, 12000);
+      }, 20000);
     }
   }
 
-  _refreshCams() {
-    const imgs = [...this.querySelectorAll("[data-img]")];
+  // Queste telecamere rispondono a intermittenza: provate una per una dalla
+  // pagina, alcune tornano 500 e altre impiegano dieci secondi, e la volta
+  // dopo si scambiano i ruoli. Percio la card non si arrende al primo errore
+  // e, soprattutto, non cancella un fotogramma gia buono: meglio l'ultima
+  // immagine vera con l'ora sopra che un riquadro nero.
+  _refreshCams(soloQuesta) {
+    const imgs = [...this.querySelectorAll("[data-img]")]
+      .filter(im => !soloQuesta || im.dataset.img === soloQuesta);
     imgs.forEach((img, k) => {
       const id = img.dataset.img;
       const st = this._hass.states[id];
       const off = img.parentElement.querySelector("[data-off]");
+      const eta = img.parentElement.querySelector("[data-eta]");
       const pic = st && st.attributes && st.attributes.entity_picture;
-      const spegni = testo => {
-        img.removeAttribute("src");
-        img.style.visibility = "hidden";
-        if (off) { off.textContent = testo; off.hidden = false; }
+      const maiVista = !img.dataset.ok;
+
+      const messaggio = t => { if (off) { off.textContent = t; off.hidden = false; } };
+      const nascondiMessaggio = () => { if (off) off.hidden = true; };
+
+      if (!pic || st.state === "unavailable") {
+        if (maiVista) { img.removeAttribute("src"); img.style.visibility = "hidden"; messaggio("Non raggiungibile"); }
+        else if (eta) eta.textContent = "non raggiungibile";
+        return;
+      }
+
+      const tentativi = parseInt(img.dataset.try || "0", 10);
+
+      img.onload = () => {
+        img.dataset.ok = "1";
+        img.dataset.try = "0";
+        img.style.visibility = "";
+        nascondiMessaggio();
+        if (eta) eta.textContent = new Date().toLocaleTimeString("it-IT", { hour: "2-digit", minute: "2-digit" });
       };
-      if (!pic || st.state === "unavailable") { spegni("Non raggiungibile"); return; }
-      // Se il fotogramma non arriva lo dice l'immagine stessa, non lo stato:
-      // una telecamera puo essere "idle" e comunque non rispondere.
-      img.onerror = () => spegni("Nessuna immagine");
-      img.onload = () => { img.style.visibility = ""; if (off) off.hidden = true; };
-      if (!img.getAttribute("src")) { if (off) { off.textContent = "Carico..."; off.hidden = false; } }
-      // Le richieste si sfalsano: chiederle tutte nello stesso istante mette in
-      // ginocchio il DVR e le prime tornano, le altre no.
+
+      img.onerror = () => {
+        // Un errore capita: si riprova un paio di volte prima di dichiarare
+        // muta la telecamera, con una pausa che cresce.
+        const n = parseInt(img.dataset.try || "0", 10) + 1;
+        img.dataset.try = String(n);
+        if (n <= 2) {
+          setTimeout(() => this._refreshCams(id), n * 2500);
+          if (maiVista) messaggio("Riprovo...");
+          return;
+        }
+        img.dataset.try = "0";
+        if (maiVista) { img.removeAttribute("src"); img.style.visibility = "hidden"; messaggio("Nessuna immagine"); }
+        else if (eta) eta.textContent = "immagine vecchia";
+      };
+
+      if (maiVista && !tentativi) messaggio("Carico...");
+      // Le richieste si sfalsano: chiederle tutte nello stesso istante mette
+      // in ginocchio il ponte delle telecamere e ne tornano solo le prime.
       setTimeout(() => {
         img.src = pic + (pic.includes("?") ? "&" : "?") + "t=" + Date.now();
-      }, k * 320);
+      }, soloQuesta ? 0 : k * 700);
     });
   }
 
