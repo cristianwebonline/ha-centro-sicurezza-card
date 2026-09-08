@@ -4,7 +4,7 @@
  *  ultime attività dal logbook. Pensata per sostituire una vista fatta di
  *  tante mushroom-template-card ripetute, ognuna con il suo CSS a mano.
  */
-const CSC_VERSION = "2.3.0";
+const CSC_VERSION = "2.3.1";
 console.info(`%c CENTRO-SICUREZZA-CARD %c v${CSC_VERSION} `,
   "color:#2b0a0a;background:#ff5442;font-weight:700;border-radius:4px 0 0 4px",
   "color:#ffe0da;background:#1a1b21;border-radius:0 4px 4px 0");
@@ -260,6 +260,10 @@ class CentroSicurezzaCard extends HTMLElement {
       .csc-cam:hover img{transform:scale(1.05)}
       .csc-camoff{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
         color:var(--csc-muted);font-size:11.5px;font-weight:700;text-align:center;padding:8px}
+      /* Un display esplicito su una classe batte l'attributo hidden, che vale
+         solo per la regola di base del browser: senza questa riga la scritta
+         "non raggiungibile" restava stampata sopra un'immagine che c'era. */
+      .csc-camoff[hidden]{display:none}
       .csc-camlab{position:absolute;left:0;right:0;bottom:0;padding:16px 9px 7px;text-align:left;
         font-size:11.5px;font-weight:800;color:#fff;text-shadow:0 1px 4px rgba(0,0,0,.9);
         background:linear-gradient(transparent,rgba(0,0,0,.72))}
@@ -385,19 +389,28 @@ class CentroSicurezzaCard extends HTMLElement {
   }
 
   _refreshCams() {
-    this.querySelectorAll("[data-img]").forEach(img => {
-      const st = this._hass.states[img.dataset.img];
-      const off = this.querySelector(`[data-off="${CSS.escape(img.dataset.img)}"]`);
+    const imgs = [...this.querySelectorAll("[data-img]")];
+    imgs.forEach((img, k) => {
+      const id = img.dataset.img;
+      const st = this._hass.states[id];
+      const off = img.parentElement.querySelector("[data-off]");
       const pic = st && st.attributes && st.attributes.entity_picture;
-      if (!pic || st.state === "unavailable") {
+      const spegni = testo => {
         img.removeAttribute("src");
         img.style.visibility = "hidden";
-        if (off) off.hidden = false;
-        return;
-      }
-      img.style.visibility = "";
-      if (off) off.hidden = true;
-      img.src = pic + (pic.includes("?") ? "&" : "?") + "t=" + Date.now();
+        if (off) { off.textContent = testo; off.hidden = false; }
+      };
+      if (!pic || st.state === "unavailable") { spegni("Non raggiungibile"); return; }
+      // Se il fotogramma non arriva lo dice l'immagine stessa, non lo stato:
+      // una telecamera puo essere "idle" e comunque non rispondere.
+      img.onerror = () => spegni("Nessuna immagine");
+      img.onload = () => { img.style.visibility = ""; if (off) off.hidden = true; };
+      if (!img.getAttribute("src")) { if (off) { off.textContent = "Carico..."; off.hidden = false; } }
+      // Le richieste si sfalsano: chiederle tutte nello stesso istante mette in
+      // ginocchio il DVR e le prime tornano, le altre no.
+      setTimeout(() => {
+        img.src = pic + (pic.includes("?") ? "&" : "?") + "t=" + Date.now();
+      }, k * 320);
     });
   }
 
