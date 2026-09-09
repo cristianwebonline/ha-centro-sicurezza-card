@@ -4,7 +4,7 @@
  *  ultime attività dal logbook. Pensata per sostituire una vista fatta di
  *  tante mushroom-template-card ripetute, ognuna con il suo CSS a mano.
  */
-const CSC_VERSION = "2.4.1";
+const CSC_VERSION = "2.5.0";
 console.info(`%c CENTRO-SICUREZZA-CARD %c v${CSC_VERSION} `,
   "color:#2b0a0a;background:#ff5442;font-weight:700;border-radius:4px 0 0 4px",
   "color:#ffe0da;background:#1a1b21;border-radius:0 4px 4px 0");
@@ -259,17 +259,17 @@ class CentroSicurezzaCard extends HTMLElement {
       .csc-card[data-dooropen="1"] .csc-sensorled{fill:#ff5442;filter:drop-shadow(0 0 6px #ff5442)}
       .csc-name{font-size:16px;font-weight:800;margin-top:2px}
       .csc-state{font-size:13.5px;font-weight:800;color:var(--csc-muted);text-align:center}
-      .csc-card[data-status="safe"] .csc-state{color:#8ff0b4}
-      .csc-card[data-status="warn"] .csc-state{color:#ffd28a}
-      .csc-card[data-status="danger"] .csc-state{color:#ffb0a3;animation:csc-blink 1s ease-in-out infinite}
+      .csc-card[data-status="safe"] .csc-state{color:var(--csc-c-ok,#8ff0b4)}
+      .csc-card[data-status="warn"] .csc-state{color:var(--csc-c-warn,#ffd28a)}
+      .csc-card[data-status="danger"] .csc-state{color:var(--csc-c-bad,#ffb0a3);animation:csc-blink 1s ease-in-out infinite}
       .csc-card[data-status="busy"] .csc-state{color:#ffe6a3}
       @keyframes csc-blink{0%,100%{opacity:1}50%{opacity:.5}}
       .csc-sub{display:flex;gap:14px;font-size:11.5px;color:var(--csc-muted);margin-top:2px;flex-wrap:wrap;justify-content:center}
       .csc-badge{display:flex;align-items:center;gap:6px;padding:6px 14px;border-radius:20px;margin-top:8px;
         font-size:11.5px;font-weight:800;background:rgba(255,255,255,.06);border:1px solid var(--csc-stroke);
         color:var(--csc-muted);cursor:pointer;width:100%;justify-content:center}
-      .csc-badge[data-alert="1"]{background:rgba(255,84,66,.16);border-color:rgba(255,84,66,.4);color:#ffb0a3;animation:csc-blink 1.4s ease-in-out infinite}
-      .csc-badge[data-alert="0"]{background:rgba(56,224,138,.1);border-color:rgba(56,224,138,.3);color:#8ff0b4}
+      .csc-badge[data-alert="1"]{background:rgba(255,84,66,.16);border-color:rgba(255,84,66,.4);color:var(--csc-c-bad,#ffb0a3);animation:csc-blink 1.4s ease-in-out infinite}
+      .csc-badge[data-alert="0"]{background:rgba(56,224,138,.1);border-color:rgba(56,224,138,.3);color:var(--csc-c-ok,#8ff0b4)}
       .csc-actions{display:flex;gap:8px;width:100%;margin-top:10px}
       .csc-btn{flex:1;background:rgba(255,255,255,.06);border:1px solid var(--csc-stroke);color:var(--csc-ink);
         border-radius:12px;padding:10px 6px;font-size:12.5px;font-weight:700;cursor:pointer;transition:filter .15s;text-align:center}
@@ -311,16 +311,16 @@ class CentroSicurezzaCard extends HTMLElement {
       .csc-alab{font-size:10px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:var(--csc-muted)}
       .csc-aval{font-size:15px;font-weight:800;color:var(--csc-ink);margin-top:2px;
         overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-      .csc-alarm[data-s="safe"] .csc-aval{color:#8ff0b4}
-      .csc-alarm[data-s="warn"] .csc-aval,.csc-alarm[data-s="busy"] .csc-aval{color:#ffd28a}
-      .csc-alarm[data-s="danger"] .csc-aval{color:#ffb0a3}
+      .csc-alarm[data-s="safe"] .csc-aval{color:var(--csc-c-ok,#8ff0b4)}
+      .csc-alarm[data-s="warn"] .csc-aval,.csc-alarm[data-s="busy"] .csc-aval{color:var(--csc-c-warn,#ffd28a)}
+      .csc-alarm[data-s="danger"] .csc-aval{color:var(--csc-c-bad,#ffb0a3)}
       .csc-abtns{display:grid;grid-template-columns:repeat(auto-fit,minmax(92px,1fr));gap:7px}
       .csc-ab{padding:9px 6px;border-radius:12px;cursor:pointer;font:inherit;font-size:12px;font-weight:800;
         border:1px solid var(--csc-stroke);background:rgba(255,255,255,.06);color:var(--csc-ink);
         display:flex;align-items:center;justify-content:center;gap:5px;transition:background .18s,border-color .18s}
       .csc-ab:hover{background:rgba(255,255,255,.11)}
-      .csc-ab.sel{border-color:rgba(255,176,32,.65);background:rgba(255,176,32,.2);color:#ffe9c2}
-      .csc-ab.off.sel{border-color:rgba(56,224,138,.6);background:rgba(56,224,138,.18);color:#8ff0b4}
+      .csc-ab.sel{border-color:rgba(255,176,32,.65);background:rgba(255,176,32,.2);color:var(--csc-c-soft,#ffe9c2)}
+      .csc-ab.off.sel{border-color:rgba(56,224,138,.6);background:rgba(56,224,138,.18);color:var(--csc-c-ok,#8ff0b4)}
       /* --------------------------------------------------------- telecamere */
       .csc-cams{display:grid;grid-template-columns:repeat(auto-fit,minmax(132px,1fr));gap:8px;margin-top:10px}
       .csc-cam{position:relative;border-radius:16px;overflow:hidden;cursor:pointer;aspect-ratio:16/10;
