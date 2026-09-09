@@ -4,7 +4,7 @@
  *  ultime attività dal logbook. Pensata per sostituire una vista fatta di
  *  tante mushroom-template-card ripetute, ognuna con il suo CSS a mano.
  */
-const CSC_VERSION = "2.5.0";
+const CSC_VERSION = "2.6.0";
 console.info(`%c CENTRO-SICUREZZA-CARD %c v${CSC_VERSION} `,
   "color:#2b0a0a;background:#ff5442;font-weight:700;border-radius:4px 0 0 4px",
   "color:#ffe0da;background:#1a1b21;border-radius:0 4px 4px 0");
@@ -16,6 +16,35 @@ const CSC_DEFAULTS = {
 };
 
 // Come si chiamano gli stati di un impianto d'allarme, detti in italiano.
+// Lo scudo dell'allarme. Un disegno solo: quello che cambia e come si muove,
+// e lo decide lo stato scritto sulla card (data-s). Prima qui c'era un'emoji:
+// ferma, e disegnata dal sistema operativo, quindi diversa su ogni telefono.
+function cscScudo() {
+  return `<svg class="csc-shield" viewBox="0 0 100 116" aria-hidden="true">
+    <defs>
+      <linearGradient id="cscShieldG" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0" stop-color="currentColor" stop-opacity=".38"/>
+        <stop offset="1" stop-color="currentColor" stop-opacity=".08"/>
+      </linearGradient>
+    </defs>
+    <path class="csc-sh-alone" d="M50 4 L92 19 V58 C92 84 73 102 50 112 C27 102 8 84 8 58 V19 Z"/>
+    <path class="csc-sh-corpo" d="M50 4 L92 19 V58 C92 84 73 102 50 112 C27 102 8 84 8 58 V19 Z"/>
+    <path class="csc-sh-bordo" d="M50 4 L92 19 V58 C92 84 73 102 50 112 C27 102 8 84 8 58 V19 Z"/>
+    <g class="csc-sh-segno">
+      <path class="csc-sh-spunta" d="M32 58 L44 71 L69 44"/>
+      <g class="csc-sh-lucchetto">
+        <rect x="36" y="54" width="28" height="24" rx="6"/>
+        <path d="M42 54 V46 a8 8 0 0 1 16 0 V54"/>
+      </g>
+      <path class="csc-sh-arco" d="M50 22 A34 34 0 0 1 84 56"/>
+      <g class="csc-sh-bang">
+        <path d="M50 40 V64"/>
+        <circle cx="50" cy="76" r="4.4"/>
+      </g>
+    </g>
+  </svg>`;
+}
+
 const CSC_ALARM = {
   disarmed: { t: "Disinserito", s: "safe" },
   armed_home: { t: "Inserito in casa", s: "warn" },
@@ -305,8 +334,63 @@ class CentroSicurezzaCard extends HTMLElement {
       .csc-alarm[data-s="danger"]{background-image:linear-gradient(rgba(255,84,66,.2),rgba(255,84,66,.2));border-color:rgba(255,84,66,.55);
         animation:csc-blink 1s ease-in-out infinite}
       .csc-ahead{display:flex;align-items:center;gap:10px;margin-bottom:11px}
-      .csc-aico{width:38px;height:38px;border-radius:13px;display:flex;align-items:center;justify-content:center;flex:0 0 auto;
-        background:rgba(255,255,255,.07);border:1px solid var(--csc-stroke);font-size:19px}
+      /* ------------------------------------------------ lo scudo animato */
+      .csc-shield{width:100%;height:100%;display:block;overflow:visible}
+      /* L'alone respira: sta SOTTO lo scudo e cresce appena, cosi si nota con
+         la coda dell'occhio senza diventare un lampeggio. */
+      .csc-sh-alone{fill:currentColor;opacity:.16;transform-box:fill-box;transform-origin:50% 50%}
+      .csc-sh-corpo{fill:url(#cscShieldG)}
+      .csc-sh-bordo{fill:none;stroke:currentColor;stroke-width:5.5;stroke-linejoin:round;opacity:.95}
+      .csc-sh-segno{fill:none;stroke:currentColor;stroke-width:6;stroke-linecap:round;stroke-linejoin:round}
+      .csc-sh-lucchetto rect{fill:currentColor;stroke:none;opacity:.9}
+      .csc-sh-lucchetto path{stroke-width:5.5}
+      /* Di base non si vede nessun segno: ogni stato accende il suo. */
+      .csc-sh-spunta,.csc-sh-lucchetto,.csc-sh-arco,.csc-sh-bang{opacity:0;transition:opacity .45s ease}
+      .csc-sh-bang circle{fill:currentColor;stroke:none}
+
+      /* DISINSERITO: scudo pieno e calmo, con la spunta. Fermo: "e tutto a
+         posto" non ha bisogno di attirare l'attenzione. */
+      .csc-alarm[data-s="safe"] .csc-sh-spunta{opacity:1}
+      .csc-alarm[data-s="safe"] .csc-sh-alone{opacity:.13}
+
+      /* INSERITO: il lucchetto, e l'alone che respira piano. */
+      .csc-alarm[data-s="warn"] .csc-sh-lucchetto{opacity:1}
+      .csc-alarm[data-s="warn"] .csc-sh-alone{animation:csc-respira 3.6s ease-in-out infinite}
+
+      /* STA INSERENDO: un arco che gira, il gesto dell'attesa. */
+      .csc-alarm[data-s="busy"] .csc-sh-arco{opacity:.95;transform-box:fill-box;
+        transform-origin:50% 50%;animation:csc-gira 1.5s linear infinite}
+      .csc-alarm[data-s="busy"] .csc-sh-lucchetto{opacity:.35}
+      .csc-alarm[data-s="busy"] .csc-sh-alone{animation:csc-respira 1.5s ease-in-out infinite}
+
+      /* SCATTATO: il punto esclamativo, e un lampeggio NETTO a scatti — un
+         allarme lampeggia, non sfuma (lezione dei LED). */
+      .csc-alarm[data-s="danger"] .csc-sh-bang{opacity:1}
+      .csc-alarm[data-s="danger"] .csc-sh-alone{opacity:.42;animation:csc-scatto .62s steps(1,end) infinite}
+      .csc-alarm[data-s="danger"] .csc-sh-bordo{animation:csc-scatto .62s steps(1,end) infinite}
+
+      /* NON RAGGIUNGIBILE: scudo vuoto e spento. */
+      .csc-alarm[data-s="off"] .csc-sh-corpo{opacity:.25}
+      .csc-alarm[data-s="off"] .csc-sh-bordo{opacity:.4}
+      .csc-alarm[data-s="off"] .csc-sh-alone{opacity:.05}
+
+      @keyframes csc-respira{
+        0%,100%{transform:scale(1);opacity:.14}
+        50%{transform:scale(1.09);opacity:.3}}
+      @keyframes csc-gira{to{transform:rotate(360deg)}}
+      @keyframes csc-scatto{0%{opacity:.5}50%{opacity:.12}}
+      @media(prefers-reduced-motion:reduce){.csc-shield *{animation:none!important}}
+
+      /* Il riquadro non serve piu: lo scudo E' la forma, e un quadratino
+         intorno a uno scudo e solo un quadratino di troppo. Resta un po' di
+         respiro e il colore, che lo scudo eredita da qui con currentColor:
+         una riga per stato invece di ridipingere ogni pezzo del disegno. */
+      .csc-aico{width:46px;height:46px;display:flex;align-items:center;justify-content:center;
+        flex:0 0 auto;color:var(--csc-muted)}
+      .csc-alarm[data-s="safe"] .csc-aico{color:var(--csc-c-ok,#8ff0b4)}
+      .csc-alarm[data-s="warn"] .csc-aico{color:var(--csc-c-acc,#ffb020)}
+      .csc-alarm[data-s="busy"] .csc-aico{color:var(--csc-c-warn,#ffd28a)}
+      .csc-alarm[data-s="danger"] .csc-aico{color:#ff5442}
       .csc-atxt{flex:1;min-width:0}
       .csc-alab{font-size:10px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:var(--csc-muted)}
       .csc-aval{font-size:15px;font-weight:800;color:var(--csc-ink);margin-top:2px;
@@ -413,7 +497,7 @@ class CentroSicurezzaCard extends HTMLElement {
     const nome = st.attributes.friendly_name || "Allarme";
     box.innerHTML = `
       <div class="csc-ahead">
-        <div class="csc-aico">${info.s === "danger" ? "\ud83d\udea8" : info.s === "safe" ? "\ud83d\udee1\ufe0f" : "\ud83d\udd12"}</div>
+        <div class="csc-aico">${cscScudo()}</div>
         <div class="csc-atxt">
           <div class="csc-alab">${this._esc(nome)}</div>
           <div class="csc-aval">${this._esc(info.t)}</div>
@@ -718,17 +802,19 @@ class CentroSicurezzaCard extends HTMLElement {
       // Con 1-2 sensori aperti mostra subito i nomi (non serve aprire
       // l'elenco per saperlo); con di più, solo il numero — altrimenti il
       // badge diventa illeggibile.
-      if (openSensors.length === 0) badge.textContent = "✅ Tutto chiuso";
+      // Quando e tutto chiuso la pastiglia e l'unica cosa che resta in vista:
+      // allora dice anche quanti sono e che si puo aprire l'elenco, senno
+      // sembra che i sensori siano spariti.
+      if (openSensors.length === 0) badge.textContent = `✅ Tutto chiuso · ${sensors.length} sensori`;
       else if (openSensors.length <= 2) {
         const names = openSensors.map(s => s.label || this._name(s.id)).join(", ");
         badge.textContent = `🚨 ${names}`;
       } else badge.textContent = `🚨 ${openSensors.length} sensori aperti/attivi — tocca per vedere quali`;
     } else badge.hidden = true;
 
-    // La griglia: prima gli aperti, poi gli altri. Oltre una certa quantita si
-    // mostrano solo i primi, senno la scheda diventa un elenco del telefono;
-    // ma se gli aperti sono tanti si allunga per farceli stare tutti, perche
-    // quelli sono esattamente cio che si vuole vedere.
+    // La griglia mostra SOLO cio che e aperto o attivo. L'elenco completo
+    // vive nel popup: tenerlo qui allungava la scheda per dire dieci volte
+    // "a posto", che e la cosa meno interessante che ci sia.
     const griglia = this._el.querySelector('[data-role="sensori"]');
     if (sensors.length) {
       griglia.hidden = false;
@@ -736,14 +822,18 @@ class CentroSicurezzaCard extends HTMLElement {
         const st = this._hass.states[x.id];
         return Object.assign({}, x, { on: !!(st && st.state === "on"), t: cscTipo(x.nome) });
       }).sort((a, b) => (b.on ? 1 : 0) - (a.on ? 1 : 0) || a.nome.localeCompare(b.nome, "it"));
-      const mostrati = con.slice(0, Math.max(8, openSensors.length));
+      // Solo gli aperti. Se e tutto chiuso la griglia sparisce del tutto:
+      // la pastiglia verde sopra dice gia quello che c'e da sapere, e la
+      // scheda resta corta come dev'essere.
+      const mostrati = con.filter(x => x.on);
+      griglia.hidden = !mostrati.length;
       griglia.innerHTML = mostrati.map(x => `<div class="csc-sp" data-on="${x.on ? 1 : 0}" title="${this._esc(x.nome)}">
         <span class="csc-spi">${x.t.ico}</span>
         <span class="csc-spn">${this._esc(x.nome)}</span>
         <span class="csc-spq">${x.on ? this._esc(x.t.aperto) : ""}</span>
       </div>`).join("")
         + (con.length > mostrati.length
-          ? `<div class="csc-spmore">e altri ${con.length - mostrati.length} — tocca per vederli tutti</div>` : "");
+          ? `<div class="csc-spmore">gli altri ${con.length - mostrati.length} sono a posto — toccami per l'elenco</div>` : "");
     } else griglia.hidden = true;
 
     const actions = this._el.querySelector('[data-role="actions"]');
