@@ -4,7 +4,7 @@
  *  ultime attività dal logbook. Pensata per sostituire una vista fatta di
  *  tante mushroom-template-card ripetute, ognuna con il suo CSS a mano.
  */
-const CSC_VERSION = "2.10.0";
+const CSC_VERSION = "2.11.0";
 console.info(`%c CENTRO-SICUREZZA-CARD %c v${CSC_VERSION} `,
   "color:#2b0a0a;background:#ff5442;font-weight:700;border-radius:4px 0 0 4px",
   "color:#ffe0da;background:#1a1b21;border-radius:0 4px 4px 0");
@@ -258,6 +258,23 @@ class CentroSicurezzaCard extends HTMLElement {
     return porte.length ? porte[0].id : "";
   }
 
+  // Rende unici gli id degli SVG di QUESTA card (e i riferimenti che li usano).
+  _idUnici() {
+    if (!this.__uid) this.__uid = "u" + Math.random().toString(36).slice(2, 8);
+    const u = this.__uid;
+    const rif = /url\(#(csc[A-Za-z0-9]*)\)/g;
+    this.querySelectorAll('[id^="csc"]').forEach(el => { el.id = el.id + "-" + u; });
+    this.querySelectorAll("*").forEach(el => {
+      ["fill", "stroke", "clip-path", "filter", "mask"].forEach(a => {
+        const v = el.getAttribute(a);
+        if (v && v.includes("url(#csc")) el.setAttribute(a, v.replace(rif, `url(#$1-${u})`));
+      });
+    });
+    // Anche il foglio di stile della card: .csc-sh-corpo usa url(#cscShieldG).
+    const st = this.querySelector("style");
+    if (st) st.textContent = st.textContent.replace(rif, `url(#$1-${u})`);
+  }
+
   _build() {
     this.innerHTML = `
     <style>
@@ -481,6 +498,15 @@ class CentroSicurezzaCard extends HTMLElement {
       <div class="csc-cams" data-role="cams" hidden></div>
     </div>`;
     stopSwipeNavHijack(this.querySelector(".csc"));
+    // Tre card di sicurezza sulla stessa pagina (Allarme, Porta, Telecamere)
+    // disegnano tutte lo stesso SVG, quindi nel documento finivano TRE
+    // "id=cscWoodPanel" uguali. Un url(#cscWoodPanel) si risolve sempre sul
+    // PRIMO id del documento: e quello stava dentro la card Allarme, dove la
+    // porta e nascosta e larga zero — un gradiente dentro un elemento
+    // nascosto non dipinge niente. Risultato: anta trasparente, si vedeva il
+    // giardino attraverso. Sul telefono, con una card sola, non succedeva.
+    // Qui si da a ogni card il suo suffisso, cosi gli id non si pestano piu.
+    this._idUnici();
     this._el = this.querySelector('[data-role="card"]');
     this.querySelector('[data-role="btn-lock"]').onclick = () => this._confirm("Bloccare la porta?", () => this._call("lock", "lock"));
     this.querySelector('[data-role="btn-unlock"]').onclick = () => this._confirm("Sbloccare la porta?", () => this._call("lock", "unlock"));
