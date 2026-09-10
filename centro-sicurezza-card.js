@@ -4,7 +4,7 @@
  *  ultime attività dal logbook. Pensata per sostituire una vista fatta di
  *  tante mushroom-template-card ripetute, ognuna con il suo CSS a mano.
  */
-const CSC_VERSION = "2.7.1";
+const CSC_VERSION = "2.8.0";
 console.info(`%c CENTRO-SICUREZZA-CARD %c v${CSC_VERSION} `,
   "color:#2b0a0a;background:#ff5442;font-weight:700;border-radius:4px 0 0 4px",
   "color:#ffe0da;background:#1a1b21;border-radius:0 4px 4px 0");
@@ -969,32 +969,47 @@ class CentroSicurezzaCardEditor extends HTMLElement {
       .cse-check input{width:auto}
     </style>
     <div class="cse">
-      <div class="fld"><label>Nome</label><input type="text" id="f_name" value="${(c.name || "").replace(/"/g, "&quot;")}"></div>
-      ${this._pickerHTML("alarm", ["alarm_control_panel."], c.alarm, "Impianto d'allarme — opzionale", "compare in cima con lo stato e i tasti per inserirlo; i modi mostrati sono solo quelli che la centrale dichiara di conoscere")}
-      ${this._pickerHTML("lock", ["lock."], c.lock, "Serratura (lock.*)", "opzionale — senza, i tasti blocca/sblocca/apri restano nascosti")}
-      ${this._pickerHTML("door_sensor", ["binary_sensor."], c.door_sensor, "Sensore anta aperta/chiusa — opzionale")}
-      ${this._pickerHTML("battery", ["sensor."], c.battery, "Sensore batteria — opzionale")}
-      <div class="fld"><label>Altri sensori da riepilogare (finestre, volumetrici...)</label>
-        <span class="h">Lascia vuoto: i sensori attaccati alla centrale scelta qui sopra li trova da solo, con il loro nome. Scrivili solo se ne vuoi alcuni o vuoi rinominarli — un'entità per riga, es. binary_sensor.finestra_sala oppure binary_sensor.finestra_sala|Finestra Sala</span>
-        <textarea id="f_sensors" placeholder="vuoto = li trova da solo dalla centrale">${this._esc(c.sensors || "")}</textarea></div>
-      <div class="fld"><label>Telecamere — opzionale</label>
-        <span class="h">Una per riga, es. camera.telecamera_giardino oppure camera.telecamera_giardino|Giardino per dargli un nome. Le anteprime si aggiornano da sole; al tocco si apre il video dal vivo.</span>
-        <textarea id="f_cams" placeholder="camera.telecamera_giardino|Giardino&#10;camera.telecamera_sala|Sala">${this._esc(c.cameras || "")}</textarea>
-        <button type="button" class="cse-auto" id="f_camauto">Prendi tutte le telecamere della casa</button></div>
       <div class="fld cse-check"><label>Cosa mostra questa card</label>
-        <label><input type="checkbox" id="f_allarme"${c.mostra_allarme === false ? "" : " checked"}> L'impianto d'allarme</label>
-        <label><input type="checkbox" id="f_porta"${c.mostra_porta === false ? "" : " checked"}> La porta</label>
-        <label><input type="checkbox" id="f_cams"${c.mostra_telecamere === false ? "" : " checked"}> Le telecamere</label>
-        <span class="h">Servono per dividere: lasciando una sola spunta ottieni una card di solo allarme, di sola porta o di sole telecamere, e le puoi mettere in punti diversi della pagina. Con tutte e tre e il centro completo di prima.</span></div>
+        <label><input type="checkbox" id="f_mallarme"${c.mostra_allarme === false ? "" : " checked"}> L'impianto d'allarme</label>
+        <label><input type="checkbox" id="f_mporta"${c.mostra_porta === false ? "" : " checked"}> La porta</label>
+        <label><input type="checkbox" id="f_mcams"${c.mostra_telecamere === false ? "" : " checked"}> Le telecamere</label>
+        <span class="h">Lasciando una sola spunta ottieni una card di solo allarme, di sola porta o di sole telecamere, da mettere dove vuoi nella pagina. Qui sotto compaiono solo i campi che servono a quello che hai scelto.</span></div>
+
+      <div class="fld"><label>Nome</label><input type="text" id="f_name" value="${(c.name || "").replace(/"/g, "&quot;")}"></div>
+
+      ${c.mostra_allarme === false ? "" : this._pickerHTML("alarm", ["alarm_control_panel."], c.alarm, "Impianto d'allarme", "compare in cima con lo stato e i tasti per inserirlo; i modi mostrati sono solo quelli che la centrale dichiara di conoscere")}
+
+      ${c.mostra_porta === false ? "" : `
+        ${this._pickerHTML("lock", ["lock."], c.lock, "Serratura (lock.*)", "opzionale — senza, i tasti blocca/sblocca/apri restano nascosti")}
+        ${this._pickerHTML("door_sensor", ["binary_sensor."], c.door_sensor, "Sensore anta aperta/chiusa — opzionale")}
+        ${this._pickerHTML("battery", ["sensor."], c.battery, "Sensore batteria — opzionale")}`}
+
+      ${c.mostra_allarme === false && c.mostra_porta === false ? "" : `
+        <div class="fld"><label>Altri sensori da riepilogare (finestre, volumetrici...)</label>
+          <span class="h">Lascia vuoto: i sensori attaccati alla centrale scelta qui sopra li trova da solo, con il loro nome. Scrivili solo se ne vuoi alcuni o vuoi rinominarli — un'entità per riga, es. binary_sensor.finestra_sala oppure binary_sensor.finestra_sala|Finestra Sala</span>
+          <textarea id="f_sensors" placeholder="vuoto = li trova da solo dalla centrale">${this._esc(c.sensors || "")}</textarea></div>`}
+
+      ${c.mostra_telecamere === false ? "" : `
+        <div class="fld"><label>Telecamere</label>
+          <span class="h">Una per riga, es. camera.telecamera_giardino oppure camera.telecamera_giardino|Giardino per dargli un nome. Le anteprime si aggiornano da sole; al tocco si apre il video dal vivo.</span>
+          <textarea id="f_camlist" placeholder="camera.telecamera_giardino|Giardino&#10;camera.telecamera_sala|Sala">${this._esc(c.cameras || "")}</textarea>
+          <button type="button" class="cse-auto" id="f_camauto">Prendi tutte le telecamere della casa</button></div>`}
+
       <div class="note">💡 La card mostra "✅ Tutto chiuso" o "🚨 N aperti" e, toccando, l'elenco di quali. Tocca "Ultime attività" per lo storico della serratura (serve la serratura configurata).</div>
     </div>`;
     const on = (id, ev, fn) => { const el = this.querySelector(id); if (el) el.addEventListener(ev, fn); };
     on("#f_name", "input", e => this._set("name", e.target.value));
     on("#f_sensors", "input", e => this._set("sensors", e.target.value));
-    on("#f_cams", "input", e => this._set("cameras", e.target.value));
-    on("#f_porta", "change", e => this._set("mostra_porta", e.target.checked));
-    on("#f_allarme", "change", e => this._set("mostra_allarme", e.target.checked));
-    on("#f_cams", "change", e => this._set("mostra_telecamere", e.target.checked));
+    on("#f_camlist", "input", e => this._set("cameras", e.target.value));
+    // Le tre spunte cambiano anche QUALI campi si vedono: dopo averle toccate
+    // il pannello va ridisegnato, altrimenti restano i campi di prima.
+    const spunta = (id, campo) => on(id, "change", e => {
+      this._set(campo, e.target.checked);
+      this._render();
+    });
+    spunta("#f_mporta", "mostra_porta");
+    spunta("#f_mallarme", "mostra_allarme");
+    spunta("#f_mcams", "mostra_telecamere");
     // Scriverle a mano una per una e' lavoro inutile: le telecamere le sa gia
     // Home Assistant. Si scartano quelle che non sono di sorveglianza (il
     // browser, i tablet, il flusso della stampante 3D).
