@@ -4,7 +4,7 @@
  *  ultime attività dal logbook. Pensata per sostituire una vista fatta di
  *  tante mushroom-template-card ripetute, ognuna con il suo CSS a mano.
  */
-const CSC_VERSION = "2.7.0";
+const CSC_VERSION = "2.7.1";
 console.info(`%c CENTRO-SICUREZZA-CARD %c v${CSC_VERSION} `,
   "color:#2b0a0a;background:#ff5442;font-weight:700;border-radius:4px 0 0 4px",
   "color:#ffe0da;background:#1a1b21;border-radius:0 4px 4px 0");
@@ -484,8 +484,8 @@ class CentroSicurezzaCard extends HTMLElement {
   // ------------------------------------------------------------- allarme
   _drawAlarm() {
     const box = this.querySelector('[data-role="alarm"]');
-    if (this._cfg.mostra_allarme === false) { box.hidden = true; return; }
     if (!box) return;
+    if (this._cfg.mostra_allarme === false) { box.hidden = true; return; }
     const id = this._cfg.alarm;
     const st = id && this._hass ? this._hass.states[id] : null;
     if (!st) { box.hidden = true; return; }
@@ -535,8 +535,8 @@ class CentroSicurezzaCard extends HTMLElement {
 
   _drawCams() {
     const box = this.querySelector('[data-role="cams"]');
-    if (this._cfg.mostra_telecamere === false) { box.hidden = true; return; }
     if (!box) return;
+    if (this._cfg.mostra_telecamere === false) { box.hidden = true; return; }
     const list = this._camList();
     if (!list.length || !this._hass) { box.hidden = true; return; }
     box.hidden = false;
@@ -742,7 +742,13 @@ class CentroSicurezzaCard extends HTMLElement {
   _impronta() {
     const cfg = this._cfg, H = this._hass.states;
     const v = id => { const st = id && H[id]; return st ? st.state : "-"; };
-    const parti = [v(cfg.lock), v(this._sensorePorta()), v(cfg.battery), v(cfg.alarm)];
+    // Anche le tre spunte fanno parte dell'impronta: senza, cambiando "cosa
+    // mostra questa card" nella Configura non succedeva niente finche non
+    // cambiava per conto suo lo stato di un sensore. Trovato provandola.
+    const parti = [v(cfg.lock), v(this._sensorePorta()), v(cfg.battery), v(cfg.alarm),
+      cfg.mostra_allarme === false ? 0 : 1,
+      cfg.mostra_porta === false ? 0 : 1,
+      cfg.mostra_telecamere === false ? 0 : 1];
     this._sensorList().forEach(x => parti.push(v(x.id)));
     return parti.join("|");
   }
