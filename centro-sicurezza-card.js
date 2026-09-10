@@ -4,7 +4,7 @@
  *  ultime attività dal logbook. Pensata per sostituire una vista fatta di
  *  tante mushroom-template-card ripetute, ognuna con il suo CSS a mano.
  */
-const CSC_VERSION = "2.8.1";
+const CSC_VERSION = "2.9.0";
 console.info(`%c CENTRO-SICUREZZA-CARD %c v${CSC_VERSION} `,
   "color:#2b0a0a;background:#ff5442;font-weight:700;border-radius:4px 0 0 4px",
   "color:#ffe0da;background:#1a1b21;border-radius:0 4px 4px 0");
@@ -105,17 +105,25 @@ function cscIconDoor() {
   return `
   <svg viewBox="0 0 400 500" class="csc-svg" xmlns="http://www.w3.org/2000/svg">
     <defs>
-      <linearGradient id="cscDoorFrameGrad" x1="0%" y1="0%" x2="100%" y2="0%">
-        <stop offset="0%" stop-color="#0f172a"/><stop offset="50%" stop-color="#334155"/><stop offset="100%" stop-color="#0f172a"/>
-      </linearGradient>
       <linearGradient id="cscWoodPanel" x1="0%" y1="0%" x2="100%" y2="100%">
-        <stop offset="0%" stop-color="#1e293b"/><stop offset="50%" stop-color="#334155"/><stop offset="100%" stop-color="#0f172a"/>
+        <stop offset="0%" stop-color="var(--csc-d-anta1)"/>
+        <stop offset="55%" stop-color="var(--csc-d-anta2)"/>
+        <stop offset="100%" stop-color="var(--csc-d-anta1)"/>
+      </linearGradient>
+      <linearGradient id="cscDoorFrameGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+        <stop offset="0%" stop-color="var(--csc-d-telaio1)"/>
+        <stop offset="50%" stop-color="var(--csc-d-telaio2)"/>
+        <stop offset="100%" stop-color="var(--csc-d-telaio1)"/>
       </linearGradient>
       <linearGradient id="cscMetalHandle" x1="0%" y1="0%" x2="0%" y2="100%">
-        <stop offset="0%" stop-color="#f8fafc"/><stop offset="50%" stop-color="#94a3b8"/><stop offset="100%" stop-color="#475569"/>
+        <stop offset="0%" stop-color="#f8fafc"/><stop offset="50%" stop-color="#b8c4d2"/><stop offset="100%" stop-color="#6b7a8d"/>
       </linearGradient>
-      <radialGradient id="cscAmbGlow" cx="50%" cy="45%" r="60%"><stop offset="0" stop-color="#8a94a1" stop-opacity=".28"/><stop offset="1" stop-color="#8a94a1" stop-opacity="0"/></radialGradient>
-      <radialGradient id="cscShadowDoor" cx="50%" cy="50%" r="50%"><stop offset="0" stop-color="#000" stop-opacity=".4"/><stop offset="1" stop-color="#000" stop-opacity="0"/></radialGradient>
+      <radialGradient id="cscAmbGlow" cx="50%" cy="45%" r="60%">
+        <stop offset="0" stop-color="#8a94a1" stop-opacity=".28"/><stop offset="1" stop-color="#8a94a1" stop-opacity="0"/>
+      </radialGradient>
+      <radialGradient id="cscShadowDoor" cx="50%" cy="50%" r="50%">
+        <stop offset="0" stop-color="#000" stop-opacity=".4"/><stop offset="1" stop-color="#000" stop-opacity="0"/>
+      </radialGradient>
       <linearGradient id="cscSky" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#6fb8e8"/><stop offset="1" stop-color="#cdeeff"/></linearGradient>
       <linearGradient id="cscGrass" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#6fc47f"/><stop offset="1" stop-color="#2d6b3a"/></linearGradient>
       <radialGradient id="cscSun" cx="50%" cy="50%" r="50%"><stop offset="0" stop-color="#fff6d8"/><stop offset="1" stop-color="#ffd166"/></radialGradient>
@@ -123,56 +131,65 @@ function cscIconDoor() {
     </defs>
 
     <ellipse class="csc-glow" cx="200" cy="230" rx="150" ry="190" fill="url(#cscAmbGlow)"/>
-    <ellipse cx="200" cy="478" rx="140" ry="14" fill="url(#cscShadowDoor)"/>
+    <ellipse class="csc-ombra" cx="200" cy="478" rx="140" ry="14" fill="url(#cscShadowDoor)"/>
 
-    <!-- telaio blindato -->
-    <rect x="50" y="30" width="300" height="410" rx="6" fill="url(#cscDoorFrameGrad)" stroke="#1e293b" stroke-width="4"/>
-    <rect x="65" y="45" width="270" height="390" fill="none" stroke="#0f172a" stroke-width="3"/>
-
-    <!-- cerniere rinforzate -->
-    <rect x="52" y="90" width="12" height="35" rx="2" fill="url(#cscMetalHandle)"/>
-    <rect x="52" y="220" width="12" height="35" rx="2" fill="url(#cscMetalHandle)"/>
-    <rect x="52" y="350" width="12" height="35" rx="2" fill="url(#cscMetalHandle)"/>
-
-    <!-- pistoni di sicurezza: rientrano quando la porta è aperta -->
-    <g class="csc-deadbolt">
-      <rect x="330" y="180" width="18" height="10" rx="3" fill="#e2e8f0"/>
-      <rect x="330" y="200" width="18" height="10" rx="3" fill="#e2e8f0"/>
-      <rect x="330" y="220" width="18" height="10" rx="3" fill="#e2e8f0"/>
-    </g>
-
-    <!-- vano/sfondo dietro l'anta: un piccolo giardino, disegnato SOPRA al
-         telaio (altrimenti il telaio, opaco, lo coprirebbe sempre) e SOTTO
-         all'anta (che lo nasconde quando è chiusa) — visibile solo quando
-         ruota aperta, così si vede subito "oltre la porta" invece di un
-         buco scuro o del colore del telaio -->
+    <!-- Il vano: si guarda da DENTRO casa, quindi oltre la soglia c'e il
+         giardino. Sta sotto all'anta, che lo copre quando e chiusa. -->
     <g clip-path="url(#cscGardenClip)">
       <rect x="70" y="50" width="260" height="380" fill="url(#cscSky)"/>
-      <circle cx="288" cy="98" r="26" fill="url(#cscSun)"/>
+      <circle class="csc-sole" cx="288" cy="98" r="26" fill="url(#cscSun)"/>
       <rect x="70" y="330" width="260" height="100" fill="url(#cscGrass)"/>
-      <rect x="118" y="272" width="10" height="58" fill="#5b4632"/>
-      <circle cx="100" cy="278" r="22" fill="#3f8850"/>
-      <circle cx="150" cy="278" r="22" fill="#3f8850"/>
-      <circle cx="123" cy="255" r="30" fill="#4a9a5a"/>
-      <circle cx="255" cy="342" r="18" fill="#4a9a5a"/>
-      <circle cx="285" cy="348" r="14" fill="#3f8850"/>
+      <g class="csc-albero">
+        <rect x="118" y="272" width="10" height="58" fill="#5b4632"/>
+        <circle cx="100" cy="278" r="22" fill="#3f8850"/>
+        <circle cx="150" cy="278" r="22" fill="#3f8850"/>
+        <circle cx="123" cy="255" r="30" fill="#4a9a5a"/>
+      </g>
+      <g class="csc-cespuglio">
+        <circle cx="255" cy="342" r="18" fill="#4a9a5a"/>
+        <circle cx="285" cy="348" r="14" fill="#3f8850"/>
+      </g>
     </g>
 
-    <!-- sensore magnetico: parte fissa sul telaio + LED che segue lo stato -->
-    <rect x="315" y="35" width="12" height="24" rx="2" fill="#e2e8f0" stroke="#475569" stroke-width="1"/>
-    <circle cx="321" cy="47" r="3" class="csc-sensorled"/>
+    <!-- telaio blindato -->
+    <rect x="50" y="30" width="300" height="410" rx="6" fill="none"
+      stroke="url(#cscDoorFrameGrad)" stroke-width="20"/>
+    <rect x="60" y="40" width="280" height="390" rx="4" fill="none"
+      stroke="var(--csc-d-bordo)" stroke-width="2"/>
 
-    <!-- anta mobile: ruota in 3D sul cardine sinistro quando è aperta -->
+    <!-- cerniere: stanno sul montante, quindi restano ferme -->
+    <rect x="52" y="95" width="13" height="34" rx="2" fill="url(#cscMetalHandle)"/>
+    <rect x="52" y="223" width="13" height="34" rx="2" fill="url(#cscMetalHandle)"/>
+    <rect x="52" y="351" width="13" height="34" rx="2" fill="url(#cscMetalHandle)"/>
+
+    <!-- pistoni: rientrano quando la serratura e aperta -->
+    <g class="csc-deadbolt">
+      <rect x="332" y="180" width="18" height="10" rx="3" fill="#e2e8f0"/>
+      <rect x="332" y="200" width="18" height="10" rx="3" fill="#e2e8f0"/>
+      <rect x="332" y="220" width="18" height="10" rx="3" fill="#e2e8f0"/>
+    </g>
+
+    <!-- sensore magnetico sul telaio + spia di stato -->
+    <rect x="315" y="35" width="12" height="24" rx="2" fill="#e2e8f0" stroke="#8296ad" stroke-width="1"/>
+    <circle cx="321" cy="47" r="3.4" class="csc-sensorled"/>
+
+    <!-- L'ANTA. Si apre verso CHI GUARDA, cioe verso l'interno: e il verso
+         vero della porta di casa. Da qui il rotateY positivo, il cardine a
+         sinistra e l'ombra che cresce mentre si avvicina. -->
     <g class="csc-doorpanel">
-      <rect x="70" y="50" width="260" height="380" rx="4" fill="url(#cscWoodPanel)" stroke="#475569" stroke-width="2"/>
-      <rect x="90" y="70" width="220" height="340" fill="none" stroke="#1e293b" stroke-width="2"/>
-      <line x1="90" y1="150" x2="310" y2="150" stroke="#1e293b" stroke-width="2"/>
-      <line x1="90" y1="330" x2="310" y2="330" stroke="#1e293b" stroke-width="2"/>
-      <rect x="301" y="35" width="12" height="24" rx="2" fill="#e2e8f0" stroke="#475569" stroke-width="1"/>
-      <rect x="285" y="200" width="22" height="80" rx="4" fill="#0f172a" stroke="#334155" stroke-width="1.5"/>
+      <rect x="70" y="50" width="260" height="380" rx="4" fill="url(#cscWoodPanel)"
+        stroke="var(--csc-d-bordo)" stroke-width="2"/>
+      <rect x="90" y="70" width="220" height="340" fill="none" stroke="var(--csc-d-riga)" stroke-width="2"/>
+      <line x1="90" y1="150" x2="310" y2="150" stroke="var(--csc-d-riga)" stroke-width="2"/>
+      <line x1="90" y1="330" x2="310" y2="330" stroke="var(--csc-d-riga)" stroke-width="2"/>
+      <!-- il riflesso che scorre sull'anta: e quello che le toglie l'aria di
+           disegno tecnico senza aggiungere movimento invadente -->
+      <rect class="csc-riflesso" x="70" y="50" width="46" height="380" fill="#ffffff" opacity=".07"/>
+      <rect x="301" y="35" width="12" height="24" rx="2" fill="#e2e8f0" stroke="#8296ad" stroke-width="1"/>
+      <rect x="285" y="200" width="22" height="80" rx="4" fill="var(--csc-d-serratura)" stroke="var(--csc-d-riga)" stroke-width="1.5"/>
       <circle cx="296" cy="225" r="8" fill="url(#cscMetalHandle)"/>
-      <rect x="295" y="221" width="2" height="8" fill="#0f172a"/>
-      <rect x="292" y="245" width="8" height="28" rx="2" fill="url(#cscMetalHandle)"/>
+      <rect x="295" y="221" width="2" height="8" fill="var(--csc-d-serratura)"/>
+      <rect class="csc-maniglia" x="292" y="245" width="8" height="28" rx="2" fill="url(#cscMetalHandle)"/>
     </g>
   </svg>`;
 }
@@ -291,8 +308,49 @@ class CentroSicurezzaCard extends HTMLElement {
       .csc-card[data-status="warn"] .csc-glow{opacity:.85;animation:csc-pulse 2.2s ease-in-out infinite}
       .csc-card[data-status="busy"] .csc-glow{opacity:.85;animation:csc-pulse .8s ease-in-out infinite}
       @keyframes csc-pulse{0%,100%{opacity:.4}50%{opacity:1}}
-      .csc-doorpanel{transform-origin:70px 240px;transition:transform .8s cubic-bezier(.4,0,.2,1)}
-      .csc-card[data-dooropen="1"] .csc-doorpanel{transform:perspective(600px) rotateY(-65deg) skewY(2deg)}
+      /* I colori del disegno, non piu scritti dentro le figure. Questi valgono
+         per la card scura (di notte era quasi nero su nero: si vedevano solo
+         l'albero e i cespugli galleggiare nel buio). */
+      .csc{--csc-d-anta1:#4a5a6e;--csc-d-anta2:#647689;--csc-d-telaio1:#3b4757;--csc-d-telaio2:#5b6b7f;
+        --csc-d-bordo:#8fa0b3;--csc-d-riga:#2b3543;--csc-d-serratura:#28313d}
+
+      /* L'anta si apre verso chi guarda: rotateY POSITIVO. Prima era negativo,
+         cioe si apriva verso l'esterno - il contrario della porta vera. */
+      .csc-doorpanel{transform-origin:70px 240px;
+        transition:transform 1s cubic-bezier(.34,1.24,.5,1);
+        will-change:transform}
+      .csc-card[data-dooropen="1"] .csc-doorpanel{
+        transform:perspective(900px) rotateY(52deg) translateZ(18px);
+        animation:csc-spiffero 6s ease-in-out 1s infinite}
+      /* Un filo di movimento anche da chiusa: la porta "respira", non e un
+         fermo immagine. Un grado e mezzo, appena percettibile. */
+      .csc-card[data-dooropen="0"] .csc-doorpanel{animation:csc-assestamento 9s ease-in-out infinite}
+      @keyframes csc-spiffero{
+        0%,100%{transform:perspective(900px) rotateY(52deg) translateZ(18px)}
+        50%{transform:perspective(900px) rotateY(56deg) translateZ(20px)}}
+      @keyframes csc-assestamento{
+        0%,100%{transform:perspective(900px) rotateY(0deg)}
+        50%{transform:perspective(900px) rotateY(1.5deg)}}
+      /* L'ombra a terra cresce quando l'anta si avvicina */
+      .csc-ombra{transition:opacity .9s ease,transform .9s ease}
+      .csc-card[data-dooropen="1"] .csc-ombra{opacity:.75;transform:translateX(14px) scaleX(1.08)}
+      /* Il riflesso scorre piano sull'anta: e questo che le toglie l'aria di
+         disegno tecnico, senza far muovere niente di grosso. */
+      .csc-riflesso{animation:csc-riflesso 7s ease-in-out infinite}
+      @keyframes csc-riflesso{
+        0%,100%{transform:translateX(0);opacity:.05}
+        50%{transform:translateX(190px);opacity:.13}}
+      /* Il giardino oltre la soglia si muove appena: le fronde e il sole. */
+      .csc-albero{transform-origin:123px 330px;animation:csc-fronde 5.5s ease-in-out infinite}
+      @keyframes csc-fronde{0%,100%{transform:rotate(-1.1deg)}50%{transform:rotate(1.1deg)}}
+      .csc-cespuglio{transform-origin:270px 356px;animation:csc-fronde 7s ease-in-out .6s infinite}
+      .csc-sole{transform-origin:288px 98px;animation:csc-sole 6s ease-in-out infinite}
+      @keyframes csc-sole{0%,100%{transform:scale(1);opacity:.92}50%{transform:scale(1.06);opacity:1}}
+      /* La maniglia si abbassa un attimo quando la porta si apre */
+      .csc-maniglia{transform-origin:296px 249px;transition:transform .45s ease}
+      .csc-card[data-dooropen="1"] .csc-maniglia{transform:rotate(-24deg)}
+      @media (prefers-reduced-motion:reduce){
+        .csc-doorpanel,.csc-riflesso,.csc-albero,.csc-cespuglio,.csc-sole{animation:none!important}}
       .csc-deadbolt{transition:transform .5s ease-in-out}
       .csc-card[data-locked="0"] .csc-deadbolt{transform:translateX(-15px)}
       .csc-sensorled{fill:#38e08a;filter:drop-shadow(0 0 4px #38e08a);transition:fill .4s ease,filter .4s ease}
@@ -317,7 +375,7 @@ class CentroSicurezzaCard extends HTMLElement {
       .csc-btn.warn{background:rgba(255,84,66,.14);border-color:rgba(255,84,66,.35)}
       .csc-link{margin-top:8px;font-size:11px;font-weight:700;color:var(--csc-muted);cursor:pointer;text-decoration:underline;text-underline-offset:2px}
       .csc-scrim{position:fixed;inset:0;background:rgba(4,5,8,.62);backdrop-filter:blur(6px);display:flex;
-        align-items:center;justify-content:center;padding:22px;z-index:9;opacity:0;pointer-events:none;transition:opacity .18s}
+        align-items:center;justify-content:center;padding:22px;z-index:100;opacity:0;pointer-events:none;transition:opacity .18s}
       .csc-scrim.on{opacity:1;pointer-events:auto}
       .csc-modal{width:100%;max-width:380px;max-height:80vh;overflow-y:auto;background:#1a1b21;border:1px solid rgba(255,255,255,.16);
         border-radius:22px;padding:20px 18px;box-shadow:0 24px 60px rgba(0,0,0,.6);transform:translateY(14px) scale(.97);transition:transform .2s}
