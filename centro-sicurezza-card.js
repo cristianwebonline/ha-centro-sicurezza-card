@@ -4,7 +4,7 @@
  *  ultime attività dal logbook. Pensata per sostituire una vista fatta di
  *  tante mushroom-template-card ripetute, ognuna con il suo CSS a mano.
  */
-const CSC_VERSION = "2.6.0";
+const CSC_VERSION = "2.7.0";
 console.info(`%c CENTRO-SICUREZZA-CARD %c v${CSC_VERSION} `,
   "color:#2b0a0a;background:#ff5442;font-weight:700;border-radius:4px 0 0 4px",
   "color:#ffe0da;background:#1a1b21;border-radius:0 4px 4px 0");
@@ -13,6 +13,10 @@ const CSC_DEFAULTS = {
   name: "Porta Blindata",
   lock: "", door_sensor: "", battery: "", sensors: "",
   alarm: "", cameras: "", mostra_porta: true,
+  // I tre pezzi si accendono uno per uno: cosi la stessa card puo essere
+  // "solo allarme", "solo porta" o "solo telecamere" e si mettono dove si
+  // vuole, invece di stare per forza tutti incolonnati insieme.
+  mostra_allarme: true, mostra_telecamere: true,
 };
 
 // Come si chiamano gli stati di un impianto d'allarme, detti in italiano.
@@ -480,6 +484,7 @@ class CentroSicurezzaCard extends HTMLElement {
   // ------------------------------------------------------------- allarme
   _drawAlarm() {
     const box = this.querySelector('[data-role="alarm"]');
+    if (this._cfg.mostra_allarme === false) { box.hidden = true; return; }
     if (!box) return;
     const id = this._cfg.alarm;
     const st = id && this._hass ? this._hass.states[id] : null;
@@ -530,6 +535,7 @@ class CentroSicurezzaCard extends HTMLElement {
 
   _drawCams() {
     const box = this.querySelector('[data-role="cams"]');
+    if (this._cfg.mostra_telecamere === false) { box.hidden = true; return; }
     if (!box) return;
     const list = this._camList();
     if (!list.length || !this._hass) { box.hidden = true; return; }
@@ -969,8 +975,11 @@ class CentroSicurezzaCardEditor extends HTMLElement {
         <span class="h">Una per riga, es. camera.telecamera_giardino oppure camera.telecamera_giardino|Giardino per dargli un nome. Le anteprime si aggiornano da sole; al tocco si apre il video dal vivo.</span>
         <textarea id="f_cams" placeholder="camera.telecamera_giardino|Giardino&#10;camera.telecamera_sala|Sala">${this._esc(c.cameras || "")}</textarea>
         <button type="button" class="cse-auto" id="f_camauto">Prendi tutte le telecamere della casa</button></div>
-      <div class="fld cse-check"><label><input type="checkbox" id="f_porta"${c.mostra_porta === false ? "" : " checked"}> Mostra il riquadro della porta</label>
-        <span class="h">Togli la spunta se vuoi un centro di sola sorveglianza: allarme e telecamere, senza la porta.</span></div>
+      <div class="fld cse-check"><label>Cosa mostra questa card</label>
+        <label><input type="checkbox" id="f_allarme"${c.mostra_allarme === false ? "" : " checked"}> L'impianto d'allarme</label>
+        <label><input type="checkbox" id="f_porta"${c.mostra_porta === false ? "" : " checked"}> La porta</label>
+        <label><input type="checkbox" id="f_cams"${c.mostra_telecamere === false ? "" : " checked"}> Le telecamere</label>
+        <span class="h">Servono per dividere: lasciando una sola spunta ottieni una card di solo allarme, di sola porta o di sole telecamere, e le puoi mettere in punti diversi della pagina. Con tutte e tre e il centro completo di prima.</span></div>
       <div class="note">💡 La card mostra "✅ Tutto chiuso" o "🚨 N aperti" e, toccando, l'elenco di quali. Tocca "Ultime attività" per lo storico della serratura (serve la serratura configurata).</div>
     </div>`;
     const on = (id, ev, fn) => { const el = this.querySelector(id); if (el) el.addEventListener(ev, fn); };
@@ -978,6 +987,8 @@ class CentroSicurezzaCardEditor extends HTMLElement {
     on("#f_sensors", "input", e => this._set("sensors", e.target.value));
     on("#f_cams", "input", e => this._set("cameras", e.target.value));
     on("#f_porta", "change", e => this._set("mostra_porta", e.target.checked));
+    on("#f_allarme", "change", e => this._set("mostra_allarme", e.target.checked));
+    on("#f_cams", "change", e => this._set("mostra_telecamere", e.target.checked));
     // Scriverle a mano una per una e' lavoro inutile: le telecamere le sa gia
     // Home Assistant. Si scartano quelle che non sono di sorveglianza (il
     // browser, i tablet, il flusso della stampante 3D).
