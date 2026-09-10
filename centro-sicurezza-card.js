@@ -4,7 +4,7 @@
  *  ultime attività dal logbook. Pensata per sostituire una vista fatta di
  *  tante mushroom-template-card ripetute, ognuna con il suo CSS a mano.
  */
-const CSC_VERSION = "2.8.0";
+const CSC_VERSION = "2.8.1";
 console.info(`%c CENTRO-SICUREZZA-CARD %c v${CSC_VERSION} `,
   "color:#2b0a0a;background:#ff5442;font-weight:700;border-radius:4px 0 0 4px",
   "color:#ffe0da;background:#1a1b21;border-radius:0 4px 4px 0");
@@ -265,6 +265,13 @@ class CentroSicurezzaCard extends HTMLElement {
         font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",system-ui,sans-serif;color:var(--csc-ink);padding:6px;
         min-height:100%;display:flex;flex-direction:column}
       .csc *{box-sizing:border-box}
+      /* L'attributo hidden e solo un display:none del browser, e QUALUNQUE
+         regola di classe lo batte: .csc-card ha display:flex e .csc-cams
+         display:grid, quindi nascondere quei riquadri da codice non aveva
+         alcun effetto - restavano li. Si vedeva la porta ripetuta dentro la
+         card dell'allarme e dentro quella delle telecamere. Questa riga
+         restituisce a hidden il suo significato in tutta la card. */
+      .csc [hidden]{display:none!important}
       .csc-card{background:var(--csc-panel);border:1px solid var(--csc-stroke);border-radius:22px;padding:16px 14px;
         flex:1;display:flex;flex-direction:column;align-items:center;gap:6px;backdrop-filter:blur(14px);
         box-shadow:0 10px 26px rgba(0,0,0,.35);position:relative;overflow:hidden;transition:background-color .5s,border-color .5s}
