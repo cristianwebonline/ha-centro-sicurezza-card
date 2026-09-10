@@ -4,7 +4,7 @@
  *  ultime attività dal logbook. Pensata per sostituire una vista fatta di
  *  tante mushroom-template-card ripetute, ognuna con il suo CSS a mano.
  */
-const CSC_VERSION = "2.9.1";
+const CSC_VERSION = "2.9.2";
 console.info(`%c CENTRO-SICUREZZA-CARD %c v${CSC_VERSION} `,
   "color:#2b0a0a;background:#ff5442;font-weight:700;border-radius:4px 0 0 4px",
   "color:#ffe0da;background:#1a1b21;border-radius:0 4px 4px 0");
@@ -105,35 +105,31 @@ function cscIconDoor() {
   return `
   <svg viewBox="0 0 400 500" class="csc-svg" xmlns="http://www.w3.org/2000/svg">
     <defs>
-      <!-- Il montante e un pezzo di ferro: chiaro dove prende luce, scuro
-           nell'incavo. E' questo che da il volume, non un contorno. -->
       <linearGradient id="cscDoorFrameGrad" x1="0%" y1="0%" x2="100%" y2="0%">
         <stop offset="0%" stop-color="var(--csc-d-telaio2)"/>
-        <stop offset="42%" stop-color="var(--csc-d-telaio1)"/>
+        <stop offset="55%" stop-color="var(--csc-d-telaio1)"/>
         <stop offset="100%" stop-color="var(--csc-d-telaio0)"/>
       </linearGradient>
-      <!-- L'anta presa di taglio: il bordo libero e vicino a chi guarda e
-           prende piu luce, il lato del cardine sprofonda. -->
-      <linearGradient id="cscWoodPanel" x1="0%" y1="0%" x2="100%" y2="0%">
+      <!-- L'anta di taglio: il bordo libero e vicino a chi guarda e prende
+           luce, il lato del cardine sprofonda. -->
+      <linearGradient id="cscWoodPanel" x1="100%" y1="0%" x2="0%" y2="0%">
         <stop offset="0%" stop-color="var(--csc-d-anta0)"/>
-        <stop offset="38%" stop-color="var(--csc-d-anta1)"/>
+        <stop offset="45%" stop-color="var(--csc-d-anta1)"/>
         <stop offset="100%" stop-color="var(--csc-d-anta2)"/>
       </linearGradient>
       <linearGradient id="cscSpessore" x1="0%" y1="0%" x2="100%" y2="0%">
-        <stop offset="0%" stop-color="var(--csc-d-anta2)"/>
-        <stop offset="100%" stop-color="var(--csc-d-telaio0)"/>
+        <stop offset="0%" stop-color="var(--csc-d-anta0)"/>
+        <stop offset="100%" stop-color="var(--csc-d-anta2)"/>
       </linearGradient>
       <linearGradient id="cscMetalHandle" x1="0%" y1="0%" x2="0%" y2="100%">
         <stop offset="0%" stop-color="#f8fafc"/><stop offset="50%" stop-color="#b8c4d2"/><stop offset="100%" stop-color="#6b7a8d"/>
       </linearGradient>
-      <!-- il vano e profondo: verso i bordi la luce non arriva -->
       <linearGradient id="cscVano" x1="0%" y1="0%" x2="100%" y2="0%">
-        <stop offset="0%" stop-color="#000" stop-opacity=".55"/>
-        <stop offset="22%" stop-color="#000" stop-opacity="0"/>
-        <stop offset="100%" stop-color="#000" stop-opacity="0"/>
+        <stop offset="0%" stop-color="#000" stop-opacity=".5"/>
+        <stop offset="25%" stop-color="#000" stop-opacity="0"/>
       </linearGradient>
       <linearGradient id="cscOmbraAnta" x1="0%" y1="0%" x2="100%" y2="0%">
-        <stop offset="0%" stop-color="#000" stop-opacity=".5"/>
+        <stop offset="0%" stop-color="#000" stop-opacity=".45"/>
         <stop offset="100%" stop-color="#000" stop-opacity="0"/>
       </linearGradient>
       <radialGradient id="cscAmbGlow" cx="50%" cy="45%" r="60%">
@@ -151,9 +147,18 @@ function cscIconDoor() {
     <ellipse class="csc-glow" cx="200" cy="230" rx="150" ry="190" fill="url(#cscAmbGlow)"/>
     <ellipse class="csc-ombra" cx="200" cy="478" rx="140" ry="14" fill="url(#cscShadowDoor)"/>
 
-    <!-- IL VANO: si guarda da dentro casa, oltre la soglia c'e il giardino.
-         Sopra ci va un velo scuro sul lato del cardine: e la profondita del
-         muro, ed e cio che fa capire che oltre la porta c'e spazio. -->
+    <!-- 1) IL TELAIO: quattro pezzi di ferro che lasciano LIBERO il vano.
+         Niente rettangolo pieno dietro: coprirebbe il giardino, ed e
+         esattamente l'errore che aveva incollato tutto in un blocco scuro. -->
+    <g class="csc-telaio">
+      <rect x="50" y="30" width="20" height="410" fill="url(#cscDoorFrameGrad)"/>
+      <rect x="330" y="30" width="20" height="410" fill="url(#cscDoorFrameGrad)"/>
+      <rect x="50" y="30" width="300" height="20" fill="var(--csc-d-telaio1)"/>
+      <rect x="50" y="430" width="300" height="12" rx="2" fill="var(--csc-d-telaio0)"/>
+    </g>
+
+    <!-- 2) IL VANO, disegnato SOPRA il telaio e SOTTO l'anta: si guarda da
+         dentro casa, quindi oltre la soglia c'e il giardino. -->
     <g clip-path="url(#cscGardenClip)">
       <rect x="70" y="50" width="260" height="380" fill="url(#cscSky)"/>
       <circle class="csc-sole" cx="288" cy="98" r="26" fill="url(#cscSun)"/>
@@ -168,60 +173,46 @@ function cscIconDoor() {
         <circle cx="255" cy="342" r="18" fill="#4a9a5a"/>
         <circle cx="285" cy="348" r="14" fill="#3f8850"/>
       </g>
+      <!-- la profondita del muro sul lato del cardine, e l'ombra dell'anta -->
       <rect x="70" y="50" width="260" height="380" fill="url(#cscVano)"/>
-      <!-- l'ombra che l'anta aperta getta dentro il vano -->
-      <rect class="csc-ombranta" x="70" y="50" width="150" height="380" fill="url(#cscOmbraAnta)" opacity="0"/>
+      <rect class="csc-ombranta" x="70" y="50" width="140" height="380" fill="url(#cscOmbraAnta)" opacity="0"/>
     </g>
 
-    <!-- IL TELAIO, pieno: quattro pezzi di ferro con il loro spessore.
-         Prima era un rettangolo vuoto col solo contorno, ed e per questo che
-         la porta sembrava disegnata su un foglio. -->
-    <g class="csc-telaio">
-      <rect x="46" y="26" width="308" height="418" rx="7" fill="var(--csc-d-telaio0)"/>
-      <rect x="50" y="30" width="28" height="410" fill="url(#cscDoorFrameGrad)"/>
-      <rect x="322" y="30" width="28" height="410" fill="url(#cscDoorFrameGrad)"/>
-      <rect x="50" y="30" width="300" height="26" fill="var(--csc-d-telaio1)"/>
-      <rect x="50" y="414" width="300" height="26" fill="var(--csc-d-telaio0)"/>
-      <!-- la battuta: il gradino dove l'anta va in appoggio -->
-      <rect x="70" y="50" width="260" height="380" fill="none" stroke="var(--csc-d-battuta)" stroke-width="5"/>
-      <rect x="74" y="54" width="252" height="372" fill="none" stroke="#000" stroke-opacity=".35" stroke-width="2"/>
-    </g>
+    <!-- 3) la battuta: il gradino su cui l'anta va in appoggio -->
+    <rect x="68" y="48" width="264" height="384" fill="none" stroke="var(--csc-d-battuta)" stroke-width="4"/>
 
     <!-- cerniere sul montante -->
-    <rect x="60" y="95" width="16" height="36" rx="2" fill="url(#cscMetalHandle)"/>
-    <rect x="60" y="223" width="16" height="36" rx="2" fill="url(#cscMetalHandle)"/>
-    <rect x="60" y="351" width="16" height="36" rx="2" fill="url(#cscMetalHandle)"/>
+    <rect x="56" y="95" width="15" height="36" rx="2" fill="url(#cscMetalHandle)"/>
+    <rect x="56" y="223" width="15" height="36" rx="2" fill="url(#cscMetalHandle)"/>
+    <rect x="56" y="351" width="15" height="36" rx="2" fill="url(#cscMetalHandle)"/>
 
-    <!-- I CHIAVISTELLI. Escono dall'anta ed entrano nel montante: con la porta
-         APERTA non si vedono affatto, ed e giusto che spariscano. -->
+    <!-- i chiavistelli: entrano nel montante, quindi ad anta aperta spariscono -->
     <g class="csc-deadbolt">
-      <rect x="326" y="178" width="20" height="11" rx="3" fill="#dbe3ec"/>
-      <rect x="326" y="199" width="20" height="11" rx="3" fill="#dbe3ec"/>
-      <rect x="326" y="220" width="20" height="11" rx="3" fill="#dbe3ec"/>
+      <rect x="322" y="178" width="20" height="11" rx="3" fill="#dbe3ec"/>
+      <rect x="322" y="199" width="20" height="11" rx="3" fill="#dbe3ec"/>
+      <rect x="322" y="220" width="20" height="11" rx="3" fill="#dbe3ec"/>
     </g>
 
     <!-- sensore sul telaio + spia -->
-    <rect x="330" y="34" width="13" height="25" rx="2" fill="#e2e8f0" stroke="#8296ad" stroke-width="1"/>
-    <circle cx="336" cy="46" r="3.4" class="csc-sensorled"/>
+    <rect x="333" y="34" width="13" height="25" rx="2" fill="#e2e8f0" stroke="#8296ad" stroke-width="1"/>
+    <circle cx="339" cy="46" r="3.4" class="csc-sensorled"/>
 
-    <!-- L'ANTA. Si apre verso chi guarda (verso l'interno). Lo spessore sul
-         bordo libero e quello che la fa sentire un blocco di ferro e non una
-         figura ritagliata: una blindata sono otto centimetri di porta. -->
+    <!-- 4) L'ANTA, sopra a tutto. Si apre verso chi guarda. -->
     <g class="csc-doorpanel">
-      <rect class="csc-spessore" x="322" y="50" width="16" height="380" rx="2" fill="url(#cscSpessore)"/>
-      <rect x="70" y="50" width="260" height="380" rx="3" fill="url(#cscWoodPanel)"/>
-      <rect x="70" y="50" width="260" height="380" rx="3" fill="none" stroke="var(--csc-d-bordo)" stroke-width="1.5"/>
-      <!-- pannellature incassate: bordo chiaro sopra, scuro sotto -->
-      <rect x="92" y="72" width="216" height="70" rx="2" fill="none" stroke="#000" stroke-opacity=".28" stroke-width="3"/>
-      <rect x="92" y="72" width="216" height="70" rx="2" fill="none" stroke="#fff" stroke-opacity=".07" stroke-width="1"/>
-      <rect x="92" y="162" width="216" height="150" rx="2" fill="none" stroke="#000" stroke-opacity=".28" stroke-width="3"/>
-      <rect x="92" y="162" width="216" height="150" rx="2" fill="none" stroke="#fff" stroke-opacity=".07" stroke-width="1"/>
-      <rect x="92" y="332" width="216" height="76" rx="2" fill="none" stroke="#000" stroke-opacity=".28" stroke-width="3"/>
-      <rect x="92" y="332" width="216" height="76" rx="2" fill="none" stroke="#fff" stroke-opacity=".07" stroke-width="1"/>
-      <rect class="csc-riflesso" x="70" y="50" width="40" height="380" fill="#ffffff" opacity=".06"/>
-      <rect x="303" y="34" width="13" height="25" rx="2" fill="#e2e8f0" stroke="#8296ad" stroke-width="1"/>
-      <!-- serratura e maniglia -->
-      <rect x="286" y="198" width="24" height="84" rx="4" fill="var(--csc-d-serratura)" stroke="#000" stroke-opacity=".4" stroke-width="1.5"/>
+      <rect class="csc-spessore" x="322" y="50" width="14" height="380" fill="url(#cscSpessore)"/>
+      <rect x="70" y="50" width="260" height="380" rx="2" fill="url(#cscWoodPanel)"/>
+      <rect x="70" y="50" width="260" height="380" rx="2" fill="none" stroke="var(--csc-d-bordo)" stroke-width="1.5"/>
+      <g class="csc-pannelli">
+        <rect x="94" y="74" width="212" height="68" rx="2" fill="none" stroke="#000" stroke-opacity=".3" stroke-width="3"/>
+        <rect x="96" y="76" width="208" height="64" rx="2" fill="none" stroke="#fff" stroke-opacity=".08" stroke-width="1.5"/>
+        <rect x="94" y="162" width="212" height="148" rx="2" fill="none" stroke="#000" stroke-opacity=".3" stroke-width="3"/>
+        <rect x="96" y="164" width="208" height="144" rx="2" fill="none" stroke="#fff" stroke-opacity=".08" stroke-width="1.5"/>
+        <rect x="94" y="330" width="212" height="76" rx="2" fill="none" stroke="#000" stroke-opacity=".3" stroke-width="3"/>
+        <rect x="96" y="332" width="208" height="72" rx="2" fill="none" stroke="#fff" stroke-opacity=".08" stroke-width="1.5"/>
+      </g>
+      <rect class="csc-riflesso" x="70" y="50" width="40" height="380" fill="#ffffff" opacity=".05"/>
+      <rect x="304" y="34" width="13" height="25" rx="2" fill="#e2e8f0" stroke="#8296ad" stroke-width="1"/>
+      <rect x="286" y="198" width="24" height="84" rx="4" fill="var(--csc-d-serratura)" stroke="#000" stroke-opacity=".35" stroke-width="1.5"/>
       <circle cx="298" cy="224" r="8.5" fill="url(#cscMetalHandle)"/>
       <circle cx="298" cy="224" r="3" fill="var(--csc-d-serratura)"/>
       <rect class="csc-maniglia" x="293" y="245" width="9" height="30" rx="3" fill="url(#cscMetalHandle)"/>
